@@ -47,40 +47,40 @@ interface UserState {
 
 const defaultDailyTasks: DailyTask[] = [
   { id: 'start-stop', name: 'Start-Stop: 3x sets', completed: false, type: 'cognitive' },
-  { id: 'bridge', name: 'Bridge Abduction: 2x sets', completed: false, type: 'exercise' },
-  { id: 'butterfly', name: 'Lying Butterfly: 2x sets', completed: false, type: 'exercise' },
-  { id: 'reframing', name: 'Cognitive reframing: 3 mins', completed: false, type: 'cognitive' },
-  { id: 'stretching', name: 'Pelvic Stretching', completed: false, type: 'exercise' },
-  { id: 'kegel', name: 'Basic Kegels: 3x sets', completed: false, type: 'exercise' },
-  { id: 'breathing', name: '4-4-8 Breathing: 5 mins', completed: false, type: 'cognitive' },
+  { id: 'bridge-hold', name: 'Bridge Abduction: 2x sets', completed: false, type: 'exercise' },
+  { id: 'butterfly-stretch', name: 'Lying Butterfly: 2 mins', completed: false, type: 'exercise' },
+  { id: 'cognitive-reframing', name: 'Cognitive Reframing: 3 mins', completed: false, type: 'cognitive' },
+  { id: 'pelvic-stretching', name: 'Pelvic Stretching', completed: false, type: 'exercise' },
+  { id: 'kegel-basic', name: 'Basic Kegels: 3x sets', completed: false, type: 'exercise' },
+  { id: 'breathing-448', name: '4-4-8 Breathing: 5 mins', completed: false, type: 'cognitive' },
 ];
 
 // Task sets based on primary concern
 const physicalFocusTasks: DailyTask[] = [
-  { id: 'kegel', name: 'Kegel Contractions: 3x sets', completed: false, type: 'exercise' },
+  { id: 'kegel-basic', name: 'Kegel Contractions: 3x sets', completed: false, type: 'exercise' },
   { id: 'reverse-kegel', name: 'Reverse Kegels: 2x sets', completed: false, type: 'exercise' },
-  { id: 'bridge', name: 'Bridge Abduction: 2x sets', completed: false, type: 'exercise' },
-  { id: 'stretching', name: 'Pelvic Stretching', completed: false, type: 'exercise' },
+  { id: 'bridge-hold', name: 'Bridge Abduction: 2x sets', completed: false, type: 'exercise' },
+  { id: 'pelvic-stretching', name: 'Pelvic Stretching', completed: false, type: 'exercise' },
   { id: 'start-stop', name: 'Start-Stop: 3x sets', completed: false, type: 'cognitive' },
-  { id: 'breathing', name: '4-4-8 Breathing: 3 mins', completed: false, type: 'cognitive' },
+  { id: 'breathing-448', name: '4-4-8 Breathing: 3 mins', completed: false, type: 'cognitive' },
 ];
 
 const mentalFocusTasks: DailyTask[] = [
-  { id: 'breathing', name: '4-4-8 Breathing: 5 mins', completed: false, type: 'cognitive' },
-  { id: 'reframing', name: 'Cognitive Reframing: 5 mins', completed: false, type: 'cognitive' },
-  { id: 'visualization', name: 'Arousal Visualization', completed: false, type: 'cognitive' },
+  { id: 'breathing-448', name: '4-4-8 Breathing: 5 mins', completed: false, type: 'cognitive' },
+  { id: 'cognitive-reframing', name: 'Cognitive Reframing: 5 mins', completed: false, type: 'cognitive' },
+  { id: 'visualization', name: 'Control Visualization', completed: false, type: 'cognitive' },
   { id: 'start-stop', name: 'Start-Stop: 3x sets', completed: false, type: 'cognitive' },
-  { id: 'kegel', name: 'Basic Kegels: 2x sets', completed: false, type: 'exercise' },
-  { id: 'stretching', name: 'Relaxation Stretches', completed: false, type: 'exercise' },
+  { id: 'kegel-basic', name: 'Basic Kegels: 2x sets', completed: false, type: 'exercise' },
+  { id: 'pelvic-stretching', name: 'Relaxation Stretches', completed: false, type: 'exercise' },
 ];
 
 const balancedTasks: DailyTask[] = [
-  { id: 'kegel', name: 'Kegel Contractions: 3x sets', completed: false, type: 'exercise' },
-  { id: 'bridge', name: 'Bridge Abduction: 2x sets', completed: false, type: 'exercise' },
-  { id: 'breathing', name: '4-4-8 Breathing: 5 mins', completed: false, type: 'cognitive' },
-  { id: 'reframing', name: 'Cognitive Reframing: 3 mins', completed: false, type: 'cognitive' },
+  { id: 'kegel-basic', name: 'Kegel Contractions: 3x sets', completed: false, type: 'exercise' },
+  { id: 'bridge-hold', name: 'Bridge Abduction: 2x sets', completed: false, type: 'exercise' },
+  { id: 'breathing-448', name: '4-4-8 Breathing: 5 mins', completed: false, type: 'cognitive' },
+  { id: 'cognitive-reframing', name: 'Cognitive Reframing: 3 mins', completed: false, type: 'cognitive' },
   { id: 'start-stop', name: 'Start-Stop: 3x sets', completed: false, type: 'cognitive' },
-  { id: 'stretching', name: 'Pelvic Stretching', completed: false, type: 'exercise' },
+  { id: 'pelvic-stretching', name: 'Pelvic Stretching', completed: false, type: 'exercise' },
 ];
 
 export const useUserStore = create<UserState>()(
