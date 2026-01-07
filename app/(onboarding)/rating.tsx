@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -18,8 +19,7 @@ import * as Haptics from 'expo-haptics';
 import * as StoreReview from 'expo-store-review';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { ShimmerCTA } from '@/components/ui';
 
 // Interactive Star Component
 const InteractiveStar = ({
@@ -66,7 +66,6 @@ const InteractiveStar = ({
 
 export default function RatingScreen() {
   const [selectedRating, setSelectedRating] = useState(0);
-  const buttonScale = useSharedValue(1);
   const headerOpacity = useSharedValue(0);
   const headerY = useSharedValue(20);
   const starsScale = useSharedValue(0.8);
@@ -110,10 +109,6 @@ export default function RatingScreen() {
     transform: [{ translateY: floatY.value }],
   }));
 
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
-
   const handleStarPress = async (rating: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedRating(rating);
@@ -121,19 +116,15 @@ export default function RatingScreen() {
 
   const handleRateApp = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
 
     // Try to open native rating dialog
     try {
       if (await StoreReview.hasAction()) {
         await StoreReview.requestReview();
       }
-    } catch (error) {
-      console.log('Store review error:', error);
+    } catch {
+      // Store review not available
     }
-
-    // Wait a bit for the dialog to show, then navigate
-    buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
 
     // Small delay to let the rating dialog appear
     setTimeout(() => {
@@ -170,7 +161,11 @@ export default function RatingScreen() {
       </View>
 
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Header */}
           <Animated.View style={[styles.header, headerStyle]}>
             <Animated.View style={[styles.iconWrap, floatStyle]}>
@@ -234,43 +229,28 @@ export default function RatingScreen() {
               </View>
             </View>
           </Animated.View>
-        </View>
-
-        {/* CTA */}
-        <Animated.View style={[styles.footer, ctaStyle]}>
-          <AnimatedPressable
-            onPress={handleRateApp}
-            style={[styles.ctaButton, buttonAnimatedStyle]}
-            disabled={selectedRating === 0}
-          >
-            <LinearGradient
-              colors={selectedRating === 0
-                ? ['#2A2A3A', '#232330']
-                : ['#FBBF24', '#F59E0B']
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaGradient}
-            >
-              <Ionicons
-                name="star"
-                size={20}
-                color={selectedRating === 0 ? Colors.textMuted : '#000000'}
-              />
-              <Text style={[
-                styles.ctaText,
-                selectedRating === 0 && styles.ctaTextDisabled
-              ]}>
-                Rate Lastr'
-              </Text>
-            </LinearGradient>
-          </AnimatedPressable>
-
-          <Pressable onPress={handleSkip} style={styles.skipButton}>
-            <Text style={styles.skipText}>Maybe later</Text>
-          </Pressable>
-        </Animated.View>
+        </ScrollView>
       </SafeAreaView>
+
+      {/* Footer CTA */}
+      <View style={styles.footer}>
+        <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+          <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+            <Animated.View style={[styles.footerInner, ctaStyle]}>
+              <ShimmerCTA
+                title="Rate Lastr'"
+                icon="star"
+                onPress={handleRateApp}
+                disabled={selectedRating === 0}
+                colors={['#FBBF24', '#F59E0B']}
+              />
+              <Pressable onPress={handleSkip} style={styles.skipButton}>
+                <Text style={styles.skipText}>Maybe later</Text>
+              </Pressable>
+            </Animated.View>
+          </SafeAreaView>
+        </BlurView>
+      </View>
     </View>
   );
 }
@@ -295,10 +275,13 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 200,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 24,
-    justifyContent: 'center',
+    paddingTop: 40,
+    paddingBottom: 180,
   },
   header: {
     alignItems: 'center',
@@ -407,34 +390,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   footer: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 40,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  ctaButton: {
-    borderRadius: 14,
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  ctaGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 18,
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+  },
+  footerInner: {
     paddingHorizontal: 24,
-  },
-  ctaText: {
-    fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#000000',
-    letterSpacing: 0.3,
-  },
-  ctaTextDisabled: {
-    color: Colors.textMuted,
+    paddingTop: 24,
+    paddingBottom: 16,
   },
   skipButton: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   skipText: {
     fontSize: 15,

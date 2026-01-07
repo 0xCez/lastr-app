@@ -4,23 +4,23 @@
     "slug": "lastr-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo_nobg.png",
     "scheme": "lastr",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/logo_nobg.png",
       "resizeMode": "contain",
       "backgroundColor": "#0A0A0F"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.lastr.app",
+      "bundleIdentifier": "com.theawesomeco.lastr",
       "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/logo_nobg.png",
         "backgroundColor": "#0A0A0F"
       },
       "package": "com.lastr.app"
@@ -28,7 +28,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/logo_nobg.png"
     },
     "plugins": [
       "expo-router",
@@ -39,7 +39,7 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#0A0A0F",
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo_nobg.png",
           "imageWidth": 200
         }
       ]

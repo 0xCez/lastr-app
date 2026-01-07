@@ -22,6 +22,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="custom-plan" />
       <Stack.Screen name="rewiring-benefits" />
       <Stack.Screen name="paywall" />
+      <Stack.Screen name="login" />
     </Stack>
   );
 }

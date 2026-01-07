@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import Constants from 'expo-constants';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,15 +18,23 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { PurchasesPackage } from 'react-native-purchases';
 import { Colors } from '@/constants/colors';
 import { useUserStore } from '@/store/userStore';
-import { useOnboardingStore } from '@/store/onboardingStore';
+import { ShimmerCTA } from '@/components/ui';
+import {
+  getPackages,
+  purchasePackage,
+  restorePurchases,
+  formatPrice,
+} from '@/lib/revenuecat';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+// Check if running in Expo Go (for dev bypass)
+const isExpoGo = Constants.appOwnership === 'expo';
 
 interface PlanOption {
   id: string;
+  rcIdentifier: string; // RevenueCat package identifier
   title: string;
   price: string;
   originalPrice?: string;
@@ -33,22 +43,33 @@ interface PlanOption {
   savings?: string;
   popular?: boolean;
   trial?: string;
+  package?: PurchasesPackage;
 }
 
-const plans: PlanOption[] = [
+// Default plans - prices will be updated from RevenueCat
+const defaultPlans: PlanOption[] = [
   {
     id: 'weekly',
+    rcIdentifier: '$rc_weekly',
     title: 'Weekly',
     price: '$9.99',
     period: '/week',
   },
   {
+    id: 'yearly',
+    rcIdentifier: '$rc_annual',
+    title: 'Yearly',
+    price: '$49.99',
+    period: '/year',
+    perDay: 'Less than $1/week',
+    savings: '90% OFF',
+  },
+  {
     id: 'lifetime',
+    rcIdentifier: '$rc_lifetime',
     title: 'Lifetime Access',
     price: '$79.99',
-    originalPrice: '$199.99',
     period: 'one-time payment',
-    savings: '60% OFF',
     popular: true,
     trial: '7-day money-back guarantee',
   },
@@ -77,8 +98,39 @@ const socialProof = [
 export default function PaywallScreen() {
   const [selectedPlan, setSelectedPlan] = useState('lifetime');
   const [loading, setLoading] = useState(false);
-  const { setPremium, initializeFromOnboarding } = useUserStore();
-  const { analysisScore, answers, targetDate } = useOnboardingStore();
+  const [plans, setPlans] = useState<PlanOption[]>(defaultPlans);
+  const [packagesLoaded, setPackagesLoaded] = useState(false);
+  const { setPremium } = useUserStore();
+
+  // Load RevenueCat packages on mount
+  useEffect(() => {
+    loadPackages();
+  }, []);
+
+  const loadPackages = async () => {
+    try {
+      const packages = await getPackages();
+      if (packages.length > 0) {
+        // Update plans with real prices from RevenueCat
+        const updatedPlans = defaultPlans.map((plan) => {
+          const pkg = packages.find((p) => p.identifier === plan.rcIdentifier);
+          if (pkg) {
+            return {
+              ...plan,
+              price: formatPrice(pkg),
+              package: pkg,
+            };
+          }
+          return plan;
+        });
+        setPlans(updatedPlans);
+      }
+      setPackagesLoaded(true);
+    } catch (error) {
+      console.error('Failed to load packages:', error);
+      setPackagesLoaded(true);
+    }
+  };
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -89,8 +141,6 @@ export default function PaywallScreen() {
   const plansOpacity = useSharedValue(0);
   const guaranteeOpacity = useSharedValue(0);
   const ctaOpacity = useSharedValue(0);
-  const buttonScale = useSharedValue(1);
-  const shimmerPosition = useSharedValue(-1);
   const pulseScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.3);
 
@@ -104,16 +154,6 @@ export default function PaywallScreen() {
     plansOpacity.value = withDelay(900, withTiming(1, { duration: 500 }));
     guaranteeOpacity.value = withDelay(1100, withTiming(1, { duration: 500 }));
     ctaOpacity.value = withDelay(1300, withTiming(1, { duration: 500 }));
-
-    // CTA shimmer animation
-    shimmerPosition.value = withDelay(
-      1500,
-      withRepeat(
-        withTiming(2, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        false
-      )
-    );
 
     // Pulse animation for popular badge
     pulseScale.value = withRepeat(
@@ -165,14 +205,6 @@ export default function PaywallScreen() {
     opacity: ctaOpacity.value,
   }));
 
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
-
-  const shimmerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shimmerPosition.value * SCREEN_WIDTH }],
-  }));
-
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
   }));
@@ -187,31 +219,60 @@ export default function PaywallScreen() {
   };
 
   const handlePurchase = async () => {
-    setLoading(true);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+    const plan = plans.find((p) => p.id === selectedPlan);
 
-    // Simulate purchase - in production, use RevenueCat
-    setTimeout(() => {
-      buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
+    // Dev bypass for Expo Go
+    if (__DEV__ && isExpoGo && !plan?.package) {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setPremium(true);
-      // Transfer onboarding data to userStore and generate personalized tasks
-      initializeFromOnboarding(
-        analysisScore,
-        answers.primary_concern || 'both',
-        targetDate
-      );
+      router.push('/(onboarding)/login');
+      return;
+    }
+
+    if (!plan?.package) {
+      Alert.alert('Error', 'Unable to load purchase options. Please try again.');
+      return;
+    }
+
+    setLoading(true);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const result = await purchasePackage(plan.package);
+
+    if (result.success) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setPremium(true);
       setLoading(false);
-      router.replace('/(tabs)');
-    }, 1500);
+      // After successful purchase, go to login/signup
+      router.push('/(onboarding)/login');
+    } else if (result.error === 'cancelled') {
+      // User cancelled, do nothing
+      setLoading(false);
+    } else {
+      setLoading(false);
+      Alert.alert('Purchase Failed', result.error || 'Something went wrong. Please try again.');
+    }
   };
 
-  const handleRestore = () => {
-    Alert.alert(
-      'Restore Purchases',
-      'Looking for previous purchases...',
-      [{ text: 'OK' }]
-    );
+  const handleRestore = async () => {
+    setLoading(true);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const result = await restorePurchases();
+
+    setLoading(false);
+
+    if (result.success && result.isPremium) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setPremium(true);
+      Alert.alert('Success', 'Your purchase has been restored!', [
+        { text: 'Continue', onPress: () => router.push('/(onboarding)/login') },
+      ]);
+    } else if (result.success && !result.isPremium) {
+      Alert.alert('No Purchases Found', 'We couldn\'t find any previous purchases for this account.');
+    } else {
+      Alert.alert('Restore Failed', result.error || 'Something went wrong. Please try again.');
+    }
   };
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
@@ -437,72 +498,30 @@ export default function PaywallScreen() {
           <View style={{ height: 120 }} />
         </ScrollView>
 
-        {/* Fixed CTA Footer */}
-        <Animated.View style={[styles.footer, ctaStyle]}>
-          <View style={styles.footerGradient}>
-            <LinearGradient
-              colors={['transparent', '#0A0A0F']}
-              style={styles.footerGradientInner}
-            />
-          </View>
-
-          <AnimatedPressable
-            onPress={handlePurchase}
-            style={[styles.ctaButton, buttonAnimatedStyle]}
-            disabled={loading}
-          >
-            {/* Glow behind button */}
-            <View style={styles.ctaGlow}>
-              <LinearGradient
-                colors={['rgba(139, 92, 246, 0.4)', 'transparent']}
-                style={styles.ctaGlowGradient}
-              />
-            </View>
-
-            <LinearGradient
-              colors={loading ? ['#4B5563', '#374151'] : ['#8B5CF6', '#7C3AED']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaGradient}
-            >
-              {/* Shimmer effect */}
-              {!loading && (
-                <Animated.View style={[styles.shimmer, shimmerStyle]}>
-                  <LinearGradient
-                    colors={['transparent', 'rgba(255,255,255,0.2)', 'transparent']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.shimmerGradient}
-                  />
-                </Animated.View>
-              )}
-
-              <View style={styles.ctaContent}>
-                {loading ? (
-                  <Text style={styles.ctaText}>Processing...</Text>
-                ) : (
-                  <>
-                    <Text style={styles.ctaText}>
-                      {selectedPlan === 'lifetime' ? 'Get Lifetime Access' : 'Start Now'}
-                    </Text>
-                    <View style={styles.ctaPriceTag}>
-                      <Text style={styles.ctaPriceText}>{selectedPlanData?.price}</Text>
-                    </View>
-                  </>
-                )}
-              </View>
-            </LinearGradient>
-          </AnimatedPressable>
-
-          <Pressable onPress={handleRestore} style={styles.restoreButton}>
-            <Text style={styles.restoreText}>Restore Purchases</Text>
-          </Pressable>
-
-          <Text style={styles.termsText}>
-            By continuing, you agree to our Terms & Privacy Policy
-          </Text>
-        </Animated.View>
       </SafeAreaView>
+
+      {/* Footer CTA */}
+      <Animated.View style={[styles.footer, ctaStyle]}>
+        <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+          <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+            <View style={styles.footerInner}>
+              <ShimmerCTA
+                title={loading ? 'Processing...' : (__DEV__ && isExpoGo ? 'Continue (Dev Mode)' : (selectedPlan === 'lifetime' ? 'Get Lifetime Access' : 'Start Now'))}
+                onPress={handlePurchase}
+                disabled={loading}
+              />
+
+              <Pressable onPress={handleRestore} style={styles.restoreButton}>
+                <Text style={styles.restoreText}>Restore Purchases</Text>
+              </Pressable>
+
+              <Text style={styles.termsText}>
+                By continuing, you agree to our Terms & Privacy Policy
+              </Text>
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </Animated.View>
     </View>
   );
 }
@@ -840,76 +859,23 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 20,
-    paddingBottom: 34,
-    paddingTop: 16,
   },
-  footerGradient: {
-    position: 'absolute',
-    top: -40,
-    left: 0,
-    right: 0,
-    height: 60,
-  },
-  footerGradientInner: {
-    flex: 1,
-  },
-  ctaButton: {
-    borderRadius: 16,
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
-    marginBottom: 12,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  ctaGlow: {
-    position: 'absolute',
-    top: -20,
-    left: -20,
-    right: -20,
-    bottom: -20,
-    zIndex: -1,
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
   },
-  ctaGlowGradient: {
-    flex: 1,
-    borderRadius: 50,
-  },
-  ctaGradient: {
-    paddingVertical: 18,
+  footerInner: {
     paddingHorizontal: 24,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  shimmer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 100,
-    left: -100,
-  },
-  shimmerGradient: {
-    flex: 1,
-    width: 100,
-  },
-  ctaContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  ctaText: {
-    fontSize: 17,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  ctaPriceTag: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  ctaPriceText: {
-    fontSize: 14,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
+    paddingTop: 24,
+    paddingBottom: 16,
   },
   restoreButton: {
     alignItems: 'center',

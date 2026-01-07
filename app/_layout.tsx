@@ -16,11 +16,20 @@ import {
   DMSans_700Bold,
 } from '@expo-google-fonts/dm-sans';
 import { Colors } from '@/constants/colors';
+import { useAuthStore } from '@/store/authStore';
+import { initializeRevenueCat } from '@/lib/revenuecat';
 
 // Prevent auto hide
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const { initialize, isInitialized } = useAuthStore();
+
+  // Initialize RevenueCat on app start
+  useEffect(() => {
+    initializeRevenueCat();
+  }, []);
+
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -35,15 +44,23 @@ export default function RootLayout() {
     'NeueHaas-Medium': require('@/assets/fonts/NeueHaasDisplayMediu.ttf'),
     'NeueHaas-Bold': require('@/assets/fonts/NeueHaasDisplayBold.ttf'),
     'NeueHaas-Black': require('@/assets/fonts/NeueHaasDisplayBlack.ttf'),
+    // Aeonik (for logo)
+    'Aeonik-Black': require('@/assets/fonts/Aeonik-Black.ttf'),
+    'Aeonik-Bold': require('@/assets/fonts/Aeonik-Bold.ttf'),
   });
 
+  // Initialize auth on app start
   useEffect(() => {
-    if (fontsLoaded) {
+    initialize();
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded && isInitialized) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, isInitialized]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !isInitialized) {
     return null;
   }
 

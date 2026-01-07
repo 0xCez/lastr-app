@@ -1,9 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { Database } from '@/types/database';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+
+// Validate env vars in development
+if (__DEV__ && (!supabaseUrl || !supabaseAnonKey)) {
+  console.warn(
+    '⚠️ Supabase env variables not loaded. Try restarting with: npx expo start -c'
+  );
+}
 
 // Custom storage adapter for Expo SecureStore
 const ExpoSecureStoreAdapter = {
@@ -29,7 +37,7 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: ExpoSecureStoreAdapter,
     autoRefreshToken: true,
@@ -37,51 +45,3 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
 });
-
-// Database types (to be expanded)
-export interface Database {
-  public: {
-    Tables: {
-      users: {
-        Row: {
-          id: string;
-          email: string;
-          created_at: string;
-          onboarding_completed: boolean;
-          subscription_status: string;
-          current_streak: number;
-          longest_streak: number;
-          control_score: number;
-          potential_score: number;
-          target_date: string | null;
-        };
-        Insert: Omit<Database['public']['Tables']['users']['Row'], 'id' | 'created_at'>;
-        Update: Partial<Database['public']['Tables']['users']['Insert']>;
-      };
-      daily_tasks: {
-        Row: {
-          id: string;
-          user_id: string;
-          date: string;
-          task_id: string;
-          completed: boolean;
-          completed_at: string | null;
-        };
-        Insert: Omit<Database['public']['Tables']['daily_tasks']['Row'], 'id'>;
-        Update: Partial<Database['public']['Tables']['daily_tasks']['Insert']>;
-      };
-      progress_logs: {
-        Row: {
-          id: string;
-          user_id: string;
-          date: string;
-          control_score: number;
-          latency_time: number;
-          notes: string | null;
-        };
-        Insert: Omit<Database['public']['Tables']['progress_logs']['Row'], 'id'>;
-        Update: Partial<Database['public']['Tables']['progress_logs']['Insert']>;
-      };
-    };
-  };
-}
