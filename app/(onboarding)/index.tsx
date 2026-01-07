@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,7 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/colors';
 import { AnimatedSplash } from '@/components/ui/AnimatedSplash';
+import { ShimmerCTA } from '@/components/ui';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,10 +38,13 @@ export default function WelcomeScreen() {
   const buttonScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.3);
 
-  // Floating orbs animation
-  const orb1Y = useSharedValue(0);
-  const orb2Y = useSharedValue(0);
-  const orb3Y = useSharedValue(0);
+  // Floating orbs animation - start from bottom
+  const orb1Y = useSharedValue(height);
+  const orb1Opacity = useSharedValue(0);
+  const orb2Y = useSharedValue(height);
+  const orb2Opacity = useSharedValue(0);
+  const orb3Y = useSharedValue(height);
+  const orb3Opacity = useSharedValue(0);
 
   useEffect(() => {
     // Only run animations after splash is hidden
@@ -67,17 +71,35 @@ export default function WelcomeScreen() {
       true
     );
 
-    // Floating orbs - subtle but noticeable movement
-    orb1Y.value = withRepeat(
-      withSequence(
-        withTiming(-35, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 3000, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
+    // Orbs rise from bottom then float
+    // Orb 1 - rises first
+    orb1Opacity.value = withTiming(1, { duration: 800 });
+    orb1Y.value = withSpring(0, { damping: 20, stiffness: 40 });
+
+    // Orb 2 - rises with delay
+    orb2Opacity.value = withDelay(200, withTiming(1, { duration: 800 }));
+    orb2Y.value = withDelay(200, withSpring(0, { damping: 18, stiffness: 35 }));
+
+    // Orb 3 - rises last
+    orb3Opacity.value = withDelay(400, withTiming(1, { duration: 800 }));
+    orb3Y.value = withDelay(400, withSpring(0, { damping: 22, stiffness: 45 }));
+
+    // Start floating animation after orbs settle
+    const floatDelay = 1200;
+
+    orb1Y.value = withDelay(
+      floatDelay,
+      withRepeat(
+        withSequence(
+          withTiming(-35, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 3000, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      )
     );
     orb2Y.value = withDelay(
-      1000,
+      floatDelay + 200,
       withRepeat(
         withSequence(
           withTiming(-28, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
@@ -88,7 +110,7 @@ export default function WelcomeScreen() {
       )
     );
     orb3Y.value = withDelay(
-      500,
+      floatDelay + 400,
       withRepeat(
         withSequence(
           withTiming(-40, { duration: 3500, easing: Easing.inOut(Easing.ease) }),
@@ -132,14 +154,17 @@ export default function WelcomeScreen() {
   }));
 
   const orb1Style = useAnimatedStyle(() => ({
+    opacity: orb1Opacity.value,
     transform: [{ translateY: orb1Y.value }],
   }));
 
   const orb2Style = useAnimatedStyle(() => ({
+    opacity: orb2Opacity.value,
     transform: [{ translateY: orb2Y.value }],
   }));
 
   const orb3Style = useAnimatedStyle(() => ({
+    opacity: orb3Opacity.value,
     transform: [{ translateY: orb3Y.value }],
   }));
 
@@ -250,44 +275,29 @@ export default function WelcomeScreen() {
           </Animated.View>
         </View>
 
-        {/* Bottom Section */}
-        <Animated.View style={[styles.bottomSection, buttonContainerStyle]}>
-          <Pressable
-            onPress={handlePress}
-            style={({ pressed }) => [
-              styles.ctaWrapper,
-              pressed && styles.ctaPressed,
-            ]}
-          >
-            {/* Glow effect behind button */}
-            <View style={styles.ctaGlowWrapper}>
-              <LinearGradient
-                colors={['rgba(139, 92, 246, 0.5)', 'rgba(139, 92, 246, 0)', 'rgba(139, 92, 246, 0)']}
-                style={styles.ctaGlow}
-              />
-            </View>
-
-            {/* Main CTA */}
-            <View style={styles.ctaOuter}>
-              <LinearGradient
-                colors={['#A78BFA', '#8B5CF6', '#7C3AED']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.ctaInner}
-              >
-                <Text style={styles.ctaText}>Get Started</Text>
-              </LinearGradient>
-            </View>
-          </Pressable>
-
-          <View style={styles.disclaimerRow}>
-            <Text style={styles.lockIcon}>🔒</Text>
-            <Text style={styles.disclaimer}>
-              100% private & anonymous
-            </Text>
-          </View>
-        </Animated.View>
       </SafeAreaView>
+
+      {/* Footer - outside SafeAreaView for edge-to-edge */}
+      <Animated.View style={[styles.footer, buttonContainerStyle]}>
+        <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+          <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+            <View style={styles.footerInner}>
+              <ShimmerCTA
+                title="Get Started"
+                icon="arrow-forward"
+                onPress={handlePress}
+              />
+
+              <View style={styles.disclaimerRow}>
+                <Text style={styles.lockIcon}>🔒</Text>
+                <Text style={styles.disclaimer}>
+                  100% private & anonymous
+                </Text>
+              </View>
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </Animated.View>
     </View>
   );
 }
@@ -330,10 +340,10 @@ const styles = StyleSheet.create({
   },
   centerGlow: {
     position: 'absolute',
-    top: height * 0.2,
+    top: height * 0.12,
     left: width * 0.1,
     right: width * 0.1,
-    height: height * 0.3,
+    height: height * 0.25,
   },
   centerGlowGradient: {
     width: '100%',
@@ -343,6 +353,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
+    paddingBottom: 100,
   },
   logoSection: {
     alignItems: 'center',
@@ -429,45 +440,29 @@ const styles = StyleSheet.create({
     height: 44,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  bottomSection: {
-    paddingBottom: 34,
-    paddingHorizontal: 0,
-    gap: 16,
-  },
-  ctaWrapper: {
-    position: 'relative',
-  },
-  ctaPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
-  },
-  ctaGlowWrapper: {
+  footer: {
     position: 'absolute',
-    top: -20,
-    left: -20,
-    right: -20,
-    bottom: -20,
-    zIndex: -1,
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  ctaGlow: {
-    flex: 1,
-    borderRadius: 50,
-  },
-  ctaOuter: {
-    borderRadius: 14,
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  ctaInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 17,
-    paddingHorizontal: 32,
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
   },
-  ctaText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 17,
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
+  footerInner: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    gap: 16,
   },
   disclaimerRow: {
     flexDirection: 'row',

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -10,13 +11,15 @@ import Animated, {
   withTiming,
   withDelay,
   withSpring,
+  withRepeat,
+  withSequence,
   Easing,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/colors';
 import { useOnboardingStore } from '@/store/onboardingStore';
+import { ShimmerCTA } from '@/components/ui';
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // All possible risk factors mapped to answer conditions
 interface RiskFactor {
@@ -35,7 +38,7 @@ const recoveryStats = [
 
 export default function AnalysisCompleteScreen() {
   const { analysisScore, answers } = useOnboardingStore();
-  const averageScore = 65; // Clinical baseline
+  const averageScore = 72; // Clinical baseline
   // analysisScore is now the direct control score (15-70, higher = better)
   const userControlScore = analysisScore;
 
@@ -135,6 +138,8 @@ export default function AnalysisCompleteScreen() {
   // Animation values
   const headerOpacity = useSharedValue(0);
   const headerY = useSharedValue(20);
+  const badgePulse = useSharedValue(1);
+  const checkmarkRotate = useSharedValue(0);
   const scoreOpacity = useSharedValue(0);
   const scoreScale = useSharedValue(0.8);
   const comparisonOpacity = useSharedValue(0);
@@ -142,13 +147,23 @@ export default function AnalysisCompleteScreen() {
   const statsOpacity = useSharedValue(0);
   const messageOpacity = useSharedValue(0);
   const ctaOpacity = useSharedValue(0);
-  const buttonScale = useSharedValue(1);
   const userBarWidth = useSharedValue(0);
   const avgBarWidth = useSharedValue(0);
 
   useEffect(() => {
     headerOpacity.value = withDelay(100, withTiming(1, { duration: 600 }));
     headerY.value = withDelay(100, withSpring(0, { damping: 15 }));
+    // Badge pulse animation
+    badgePulse.value = withDelay(600, withRepeat(
+      withSequence(
+        withTiming(1.05, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    ));
+    // Checkmark rotation
+    checkmarkRotate.value = withDelay(300, withSpring(360, { damping: 12, stiffness: 80 }));
     scoreOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
     scoreScale.value = withDelay(400, withSpring(1, { damping: 12 }));
     comparisonOpacity.value = withDelay(700, withTiming(1, { duration: 600 }));
@@ -169,6 +184,14 @@ export default function AnalysisCompleteScreen() {
   const headerStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
     transform: [{ translateY: headerY.value }],
+  }));
+
+  const badgeStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: badgePulse.value }],
+  }));
+
+  const checkmarkStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${checkmarkRotate.value}deg` }],
   }));
 
   const scoreStyle = useAnimatedStyle(() => ({
@@ -204,17 +227,9 @@ export default function AnalysisCompleteScreen() {
     opacity: ctaOpacity.value,
   }));
 
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
-
   const handleContinue = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-    setTimeout(() => {
-      buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-      router.push('/(onboarding)/symptoms');
-    }, 120);
+    router.push('/(onboarding)/symptoms');
   };
 
   const getSeverityColor = (severity: string) => {
@@ -251,13 +266,24 @@ export default function AnalysisCompleteScreen() {
         >
           {/* Header */}
           <Animated.View style={[styles.header, headerStyle]}>
-            <View style={styles.badge}>
-              <Ionicons name="shield-checkmark" size={14} color={Colors.primary} />
-              <Text style={styles.badgeText}>ANALYSIS COMPLETE</Text>
-            </View>
-            <Text style={styles.title}>Here's what we found</Text>
+            <Animated.View style={[styles.badge, badgeStyle]}>
+              <LinearGradient
+                colors={['rgba(139, 92, 246, 0.2)', 'rgba(139, 92, 246, 0.08)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.badgeGradient}
+              >
+                <View style={styles.badgeIconWrap}>
+                  <Animated.View style={checkmarkStyle}>
+                    <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+                  </Animated.View>
+                </View>
+                <Text style={styles.badgeText}>ANALYSIS COMPLETE</Text>
+              </LinearGradient>
+            </Animated.View>
+            <Text style={styles.title}>Your Results Are In</Text>
             <Text style={styles.subtitle}>
-              Our algorithm analyzed your responses and found specific patterns affecting your control
+              We've identified the key patterns affecting your control
             </Text>
           </Animated.View>
 
@@ -411,36 +437,34 @@ export default function AnalysisCompleteScreen() {
           </Animated.View>
         </ScrollView>
 
-        {/* CTA */}
-        <Animated.View style={[styles.footer, ctaStyle]}>
-          <AnimatedPressable
-            onPress={handleContinue}
-            style={[styles.ctaButton, buttonAnimatedStyle]}
-          >
-            <LinearGradient
-              colors={['#8B5CF6', '#7C3AED']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaGradient}
-            >
-              <Text style={styles.ctaText}>Get My Recovery Plan</Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-            </LinearGradient>
-          </AnimatedPressable>
-
-          <View style={styles.trustBadges}>
-            <View style={styles.trustBadge}>
-              <Ionicons name="lock-closed" size={12} color={Colors.textMuted} />
-              <Text style={styles.trustText}>256-bit encrypted</Text>
-            </View>
-            <View style={styles.trustDivider} />
-            <View style={styles.trustBadge}>
-              <Ionicons name="shield-checkmark" size={12} color={Colors.textMuted} />
-              <Text style={styles.trustText}>HIPAA compliant</Text>
-            </View>
-          </View>
-        </Animated.View>
       </SafeAreaView>
+
+      {/* Footer CTA */}
+      <Animated.View style={[styles.footer, ctaStyle]}>
+        <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+          <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+            <View style={styles.footerInner}>
+              <ShimmerCTA
+                title="Get My Recovery Plan"
+                icon="arrow-forward"
+                onPress={handleContinue}
+              />
+
+              <View style={styles.trustBadges}>
+                <View style={styles.trustBadge}>
+                  <Ionicons name="lock-closed" size={12} color={Colors.textMuted} />
+                  <Text style={styles.trustText}>256-bit encrypted</Text>
+                </View>
+                <View style={styles.trustDivider} />
+                <View style={styles.trustBadge}>
+                  <Ionicons name="shield-checkmark" size={12} color={Colors.textMuted} />
+                  <Text style={styles.trustText}>HIPAA compliant</Text>
+                </View>
+              </View>
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </Animated.View>
     </View>
   );
 }
@@ -458,7 +482,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 140,
   },
   header: {
     alignItems: 'center',
@@ -466,35 +490,45 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   badge: {
+    marginBottom: 16,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.25)',
+  },
+  badgeGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(139, 92, 246, 0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 12,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  badgeIconWrap: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badgeText: {
-    fontSize: 11,
-    fontFamily: 'Inter_600SemiBold',
-    color: Colors.primary,
-    letterSpacing: 0.5,
-  },
-  title: {
-    fontSize: 24,
+    fontSize: 12,
     fontFamily: 'Inter_700Bold',
     color: Colors.text,
-    letterSpacing: -0.5,
-    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: 'Inter_700Bold',
+    color: Colors.text,
+    letterSpacing: -0.8,
+    marginBottom: 10,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'Inter_400Regular',
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 10,
+    lineHeight: 22,
+    paddingHorizontal: 16,
   },
   scoreCard: {
     borderRadius: 16,
@@ -776,26 +810,28 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   footer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 28,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  ctaButton: {
-    borderRadius: 14,
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  ctaGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+  },
+  footerInner: {
     paddingHorizontal: 24,
-  },
-  ctaText: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    paddingTop: 24,
+    paddingBottom: 16,
+    gap: 12,
   },
   trustBadges: {
     flexDirection: 'row',

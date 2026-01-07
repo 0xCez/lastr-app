@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Colors } from '@/constants/colors';
 
 export default function TabsLayout() {
@@ -9,27 +10,41 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
+        tabBarBackground: () => (
+          <BlurView intensity={40} tint="dark" style={styles.tabBarBlur}>
+            <View style={styles.tabBarInner} />
+          </BlurView>
+        ),
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textMuted,
-        tabBarLabelStyle: styles.tabBarLabel,
-        tabBarIconStyle: styles.tabBarIcon,
+        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.4)',
+        tabBarShowLabel: true,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart" size={size} color={color} />
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="today"
         options={{
-          title: 'Today',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="checkbox" size={size} color={color} />
+          title: 'Train',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'barbell' : 'barbell-outline'}
+              size={26}
+              color={color}
+            />
           ),
         }}
       />
@@ -37,26 +52,41 @@ export default function TabsLayout() {
         name="learn"
         options={{
           title: 'Learn',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'book' : 'book-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="community"
         options={{
-          title: 'Community',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" size={size} color={color} />
+          title: 'Soon',
+          tabBarIcon: ({ focused }) => (
+            <View style={styles.soonIconWrap}>
+              <Ionicons
+                name="chatbubbles-outline"
+                size={24}
+                color="rgba(255, 255, 255, 0.25)"
+              />
+            </View>
           ),
+          tabBarLabelStyle: styles.soonLabel,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'person' : 'person-outline'}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -66,18 +96,40 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: Colors.backgroundSecondary,
-    borderTopColor: Colors.cardBorder,
-    borderTopWidth: 1,
-    height: Platform.OS === 'ios' ? 85 : 65,
+    position: 'absolute',
+    borderTopWidth: 0,
+    backgroundColor: 'transparent',
+    elevation: 0,
+    height: Platform.OS === 'ios' ? 88 : 64,
     paddingTop: 8,
     paddingBottom: Platform.OS === 'ios' ? 28 : 8,
   },
-  tabBarLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+  tabBarBlur: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  tabBarIcon: {
-    marginBottom: -2,
+  tabBarInner: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(20, 20, 28, 0.75)',
+  },
+  tabLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    marginTop: 4,
+  },
+  soonIconWrap: {
+    opacity: 0.5,
+  },
+  soonLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    marginTop: 4,
+    color: 'rgba(255, 255, 255, 0.25)',
   },
 });

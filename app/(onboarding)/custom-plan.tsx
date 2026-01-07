@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -14,8 +15,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/colors';
 import { useOnboardingStore } from '@/store/onboardingStore';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { ShimmerCTA } from '@/components/ui';
 
 // Plan stats
 const planStats = [
@@ -79,7 +79,6 @@ const scienceFacts = [
 
 export default function CustomPlanScreen() {
   const { targetDate, answers } = useOnboardingStore();
-  const buttonScale = useSharedValue(1);
   const headerOpacity = useSharedValue(0);
   const headerY = useSharedValue(20);
   const checkmarkScale = useSharedValue(0);
@@ -167,17 +166,9 @@ export default function CustomPlanScreen() {
     opacity: ctaOpacity.value,
   }));
 
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
-
   const handleContinue = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-    setTimeout(() => {
-      buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-      router.push('/(onboarding)/paywall');
-    }, 120);
+    router.push('/(onboarding)/paywall');
   };
 
   return (
@@ -440,36 +431,34 @@ export default function CustomPlanScreen() {
           </Animated.View>
         </ScrollView>
 
-        {/* CTA */}
-        <Animated.View style={[styles.footer, ctaStyle]}>
-          <AnimatedPressable
-            onPress={handleContinue}
-            style={[styles.ctaButton, buttonAnimatedStyle]}
-          >
-            <LinearGradient
-              colors={['#22C55E', '#16A34A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaGradient}
-            >
-              <Text style={styles.ctaText}>Start My Program</Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-            </LinearGradient>
-          </AnimatedPressable>
-
-          <View style={styles.trustBadges}>
-            <View style={styles.trustBadge}>
-              <Ionicons name="lock-closed" size={12} color={Colors.textMuted} />
-              <Text style={styles.trustText}>Secure & private</Text>
-            </View>
-            <View style={styles.trustDivider} />
-            <View style={styles.trustBadge}>
-              <Ionicons name="card-outline" size={12} color={Colors.textMuted} />
-              <Text style={styles.trustText}>Cancel anytime</Text>
-            </View>
-          </View>
-        </Animated.View>
       </SafeAreaView>
+
+      {/* Footer CTA */}
+      <Animated.View style={[styles.footer, ctaStyle]}>
+        <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+          <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+            <View style={styles.footerInner}>
+              <ShimmerCTA
+                title="Start My Program"
+                icon="arrow-forward"
+                onPress={handleContinue}
+              />
+
+              <View style={styles.trustBadges}>
+                <View style={styles.trustBadge}>
+                  <Ionicons name="lock-closed" size={12} color={Colors.textMuted} />
+                  <Text style={styles.trustText}>Secure & private</Text>
+                </View>
+                <View style={styles.trustDivider} />
+                <View style={styles.trustBadge}>
+                  <Ionicons name="card-outline" size={12} color={Colors.textMuted} />
+                  <Text style={styles.trustText}>Cancel anytime</Text>
+                </View>
+              </View>
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </Animated.View>
     </View>
   );
 }
@@ -499,7 +488,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 140,
   },
   header: {
     alignItems: 'center',
@@ -1007,26 +996,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   footer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 28,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  ctaButton: {
-    borderRadius: 14,
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  ctaGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+  },
+  footerInner: {
     paddingHorizontal: 24,
-  },
-  ctaText: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    paddingTop: 24,
+    paddingBottom: 16,
   },
   trustBadges: {
     flexDirection: 'row',

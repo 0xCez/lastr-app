@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedProps,
   withSpring,
   withDelay,
   withTiming,
@@ -17,8 +17,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { ShimmerCTA } from '@/components/ui';
 
 // Brain rewiring benefits
 const rewiringBenefits = [
@@ -166,14 +165,12 @@ const ProgressGraph = ({ animate }: { animate: boolean }) => {
 };
 
 export default function RewiringBenefitsScreen() {
-  const buttonScale = useSharedValue(1);
   const headerOpacity = useSharedValue(0);
   const headerY = useSharedValue(20);
   const graphOpacity = useSharedValue(0);
   const benefitsOpacity = useSharedValue(0);
   const timelineOpacity = useSharedValue(0);
   const statsOpacity = useSharedValue(0);
-  const ctaOpacity = useSharedValue(0);
 
   // Pulsing animation for the brain icon
   const pulseScale = useSharedValue(1);
@@ -185,9 +182,8 @@ export default function RewiringBenefitsScreen() {
     benefitsOpacity.value = withDelay(700, withTiming(1, { duration: 600 }));
     timelineOpacity.value = withDelay(1000, withTiming(1, { duration: 600 }));
     statsOpacity.value = withDelay(1300, withTiming(1, { duration: 600 }));
-    ctaOpacity.value = withDelay(1600, withTiming(1, { duration: 600 }));
 
-    // Pulse animation
+    // Pulse animation for brain icon
     pulseScale.value = withRepeat(
       withSequence(
         withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
@@ -219,25 +215,13 @@ export default function RewiringBenefitsScreen() {
     opacity: statsOpacity.value,
   }));
 
-  const ctaStyle = useAnimatedStyle(() => ({
-    opacity: ctaOpacity.value,
-  }));
-
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
   }));
 
-  const buttonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
-
   const handleContinue = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-    setTimeout(() => {
-      buttonScale.value = withSpring(1, { damping: 15, stiffness: 400 });
-      router.push('/(onboarding)/social-proof');
-    }, 120);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/(onboarding)/social-proof');
   };
 
   return (
@@ -388,36 +372,34 @@ export default function RewiringBenefitsScreen() {
           </Animated.View>
         </ScrollView>
 
-        {/* CTA */}
-        <Animated.View style={[styles.footer, ctaStyle]}>
-          <AnimatedPressable
-            onPress={handleContinue}
-            style={[styles.ctaButton, buttonAnimatedStyle]}
-          >
-            <LinearGradient
-              colors={['#8B5CF6', '#7C3AED']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaGradient}
-            >
-              <Text style={styles.ctaText}>See My Personalized Plan</Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-            </LinearGradient>
-          </AnimatedPressable>
-
-          <View style={styles.trustBadges}>
-            <View style={styles.trustBadge}>
-              <Ionicons name="shield-checkmark" size={12} color={Colors.textMuted} />
-              <Text style={styles.trustText}>Science-backed</Text>
-            </View>
-            <View style={styles.trustDivider} />
-            <View style={styles.trustBadge}>
-              <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
-              <Text style={styles.trustText}>Results in 3 weeks</Text>
-            </View>
-          </View>
-        </Animated.View>
       </SafeAreaView>
+
+      {/* Footer CTA */}
+      <View style={styles.footer}>
+        <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+          <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+            <View style={styles.footerInner}>
+              <ShimmerCTA
+                title="See My Personalized Plan"
+                icon="arrow-forward"
+                onPress={handleContinue}
+              />
+
+              <View style={styles.trustBadges}>
+                <View style={styles.trustBadge}>
+                  <Ionicons name="shield-checkmark" size={12} color={Colors.textMuted} />
+                  <Text style={styles.trustText}>Science-backed</Text>
+                </View>
+                <View style={styles.trustDivider} />
+                <View style={styles.trustBadge}>
+                  <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
+                  <Text style={styles.trustText}>First results in 3 weeks</Text>
+                </View>
+              </View>
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </View>
     </View>
   );
 }
@@ -447,7 +429,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 140,
   },
   header: {
     alignItems: 'center',
@@ -830,26 +812,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   footer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 28,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  ctaButton: {
-    borderRadius: 14,
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  ctaGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+  },
+  footerInner: {
     paddingHorizontal: 24,
-  },
-  ctaText: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
+    paddingTop: 24,
+    paddingBottom: 16,
   },
   trustBadges: {
     flexDirection: 'row',

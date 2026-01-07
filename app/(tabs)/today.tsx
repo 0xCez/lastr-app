@@ -18,8 +18,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/colors';
 import { useUserStore } from '@/store/userStore';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { ShimmerCTA } from '@/components/ui';
 
 // Task type icons and colors
 const getTaskMeta = (type: string) => {
@@ -77,7 +76,15 @@ export default function TodayScreen() {
   // Animation values
   const headerOpacity = useSharedValue(0);
   const progressGlow = useSharedValue(0.3);
-  const ctaPulse = useSharedValue(1);
+  const progressWidth = useSharedValue(progress);
+
+  // Animate progress bar when progress changes
+  useEffect(() => {
+    progressWidth.value = withTiming(progress, {
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [progress]);
 
   useEffect(() => {
     headerOpacity.value = withDelay(100, withTiming(1, { duration: 500 }));
@@ -90,23 +97,14 @@ export default function TodayScreen() {
       -1,
       true
     );
-
-    ctaPulse.value = withRepeat(
-      withSequence(
-        withTiming(1.02, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
-    );
   }, []);
 
   const glowStyle = useAnimatedStyle(() => ({
     opacity: progressGlow.value,
   }));
 
-  const ctaStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: ctaPulse.value }],
+  const progressBarStyle = useAnimatedStyle(() => ({
+    width: `${progressWidth.value}%`,
   }));
 
   const handleToggleTask = async (taskId: string) => {
@@ -237,7 +235,7 @@ export default function TodayScreen() {
 
             <View style={styles.progressTrack}>
               <Animated.View
-                style={[styles.progressFill, { width: `${progress}%` }]}
+                style={[styles.progressFill, progressBarStyle]}
               >
                 <LinearGradient
                   colors={allCompleted ? ['#22C55E', '#16A34A'] : ['#8B5CF6', '#22C55E']}
@@ -358,20 +356,11 @@ export default function TodayScreen() {
               style={styles.ctaSection}
               entering={FadeInUp.duration(500).delay(800)}
             >
-              <AnimatedPressable
+              <ShimmerCTA
+                title="Start Training"
+                icon="play"
                 onPress={handleStartTraining}
-                style={[styles.ctaButton, ctaStyle]}
-              >
-                <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.ctaGradient}
-                >
-                  <Ionicons name="play" size={20} color="#FFFFFF" />
-                  <Text style={styles.ctaText}>Start Training</Text>
-                </LinearGradient>
-              </AnimatedPressable>
+              />
               <Text style={styles.ctaHint}>Next: {nextTask.name}</Text>
             </Animated.View>
           )}

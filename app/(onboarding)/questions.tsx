@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, PanResponder } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { BlurView } from 'expo-blur';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -12,16 +12,16 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withRepeat,
+  withSequence,
   Easing,
-  runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { onboardingQuestions } from '@/constants/onboarding';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { ShimmerCTA } from '@/components/ui';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -135,143 +135,207 @@ interface GaugeProps {
   onChange: (value: number) => void;
 }
 
-const GAUGE_PADDING = 24; // Horizontal padding
-const GAUGE_WIDTH = SCREEN_WIDTH - (GAUGE_PADDING * 2) - 48; // Account for screen padding
-const THUMB_SIZE = 32;
-const TRACK_PADDING = THUMB_SIZE / 2; // Keep thumb within bounds
-
 const Gauge: React.FC<GaugeProps> = ({ value, min, max, minLabel, maxLabel, onChange }) => {
   const totalSteps = max - min;
-  const sliderPosition = useSharedValue((value - min) / totalSteps);
   const lastValue = useRef(value);
+  const containerWidth = useRef(0);
+  const containerX = useRef(0);
 
+  // Animations
+  const circleScale = useSharedValue(1);
+  const glowOpacity = useSharedValue(0.5);
+  const numberScale = useSharedValue(1);
+
+  // Pulse animation on mount
+  React.useEffect(() => {
+    glowOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.8, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.4, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  // Bounce animation when value changes
+  React.useEffect(() => {
+    circleScale.value = withSequence(
+      withSpring(1.1, { damping: 8, stiffness: 400 }),
+      withSpring(1, { damping: 8, stiffness: 400 })
+    );
+    numberScale.value = withSequence(
+      withSpring(1.3, { damping: 6, stiffness: 500 }),
+      withSpring(1, { damping: 8, stiffness: 400 })
+    );
+  }, [value]);
+
+  const circleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: circleScale.value }],
+  }));
+
+  const glowAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
+  }));
+
+  const numberAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: numberScale.value }],
+  }));
+
+  // Better color palette - more modern/futuristic
   const getColor = (val: number) => {
     const ratio = (val - min) / totalSteps;
-    if (ratio < 0.3) return '#22C55E';
-    if (ratio < 0.6) return '#F59E0B';
-    return '#EF4444';
+    if (ratio <= 0.3) return '#10B981'; // Emerald
+    if (ratio <= 0.6) return '#8B5CF6'; // Purple (brand color)
+    return '#F43F5E'; // Rose/Pink
   };
 
-  const triggerStepHaptic = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const getGradientColors = (val: number): [string, string] => {
+    const ratio = (val - min) / totalSteps;
+    if (ratio <= 0.3) return ['#10B981', '#059669'];
+    if (ratio <= 0.6) return ['#8B5CF6', '#7C3AED'];
+    return ['#F43F5E', '#E11D48'];
   };
 
-  const updateValue = (newValue: number) => {
-    if (newValue !== lastValue.current) {
-      lastValue.current = newValue;
-      onChange(newValue);
-      runOnJS(triggerStepHaptic)();
+  const getSegmentColor = (stepRatio: number, isSelected: boolean) => {
+    if (!isSelected) return 'rgba(255, 255, 255, 0.06)';
+    if (stepRatio <= 0.3) return '#10B981';
+    if (stepRatio <= 0.6) return '#8B5CF6';
+    return '#F43F5E';
+  };
+
+  // Haptics based on severity
+  const triggerHapticForValue = (val: number) => {
+    const ratio = (val - min) / totalSteps;
+    if (ratio <= 0.3) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } else if (ratio <= 0.6) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     }
   };
 
-  const usableTrackWidth = GAUGE_WIDTH - THUMB_SIZE;
-
-  const triggerTapHaptic = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const handleValueChange = (newValue: number) => {
+    if (newValue !== lastValue.current && newValue >= min && newValue <= max) {
+      lastValue.current = newValue;
+      triggerHapticForValue(newValue);
+      onChange(newValue);
+    }
   };
 
-  const panGesture = Gesture.Pan()
-    .onStart(() => {
-      runOnJS(triggerTapHaptic)();
+  const calculateValue = (pageX: number) => {
+    if (containerWidth.current > 0) {
+      const localX = pageX - containerX.current;
+      const position = Math.max(0, Math.min(localX, containerWidth.current));
+      const ratio = position / containerWidth.current;
+      const newValue = Math.round(ratio * totalSteps) + min;
+      return Math.max(min, Math.min(max, newValue));
+    }
+    return value;
+  };
+
+  // PanResponder for touch handling
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const newValue = calculateValue(evt.nativeEvent.pageX);
+        handleValueChange(newValue);
+      },
+      onPanResponderMove: (evt) => {
+        const newValue = calculateValue(evt.nativeEvent.pageX);
+        handleValueChange(newValue);
+      },
     })
-    .onUpdate((event) => {
-      // Calculate position based on gesture, accounting for thumb padding
-      const adjustedX = event.x - TRACK_PADDING;
-      const rawPosition = Math.max(0, Math.min(1, adjustedX / usableTrackWidth));
+  ).current;
 
-      // Snap to discrete steps (1, 2, 3... 10)
-      const stepValue = Math.round(rawPosition * totalSteps) + min;
-      const clampedValue = Math.max(min, Math.min(max, stepValue));
-
-      // Set position to snapped step position
-      const snappedPosition = (clampedValue - min) / totalSteps;
-      sliderPosition.value = snappedPosition;
-
-      runOnJS(updateValue)(clampedValue);
-    })
-    .onEnd(() => {
-      // Already snapped during update, just ensure final snap
-      const stepValue = Math.round(sliderPosition.value * totalSteps);
-      sliderPosition.value = withSpring(stepValue / totalSteps, { damping: 20, stiffness: 300 });
-    });
-
-  const tapGesture = Gesture.Tap()
-    .onEnd((event) => {
-      const adjustedX = event.x - TRACK_PADDING;
-      const rawPosition = Math.max(0, Math.min(1, adjustedX / usableTrackWidth));
-
-      // Snap to discrete steps
-      const stepValue = Math.round(rawPosition * totalSteps) + min;
-      const clampedValue = Math.max(min, Math.min(max, stepValue));
-      const snappedPosition = (clampedValue - min) / totalSteps;
-
-      sliderPosition.value = withSpring(snappedPosition, { damping: 20, stiffness: 300 });
-      runOnJS(updateValue)(clampedValue);
-    });
-
-  const composedGesture = Gesture.Race(panGesture, tapGesture);
-
-  // Animated styles for the thumb - keep within track bounds
-  const thumbStyle = useAnimatedStyle(() => ({
-    left: TRACK_PADDING + (sliderPosition.value * usableTrackWidth),
-  }));
-
-  // Animated style for the fill
-  const fillStyle = useAnimatedStyle(() => ({
-    width: `${sliderPosition.value * 100}%`,
-  }));
-
-  // Update slider position when value prop changes
-  React.useEffect(() => {
-    sliderPosition.value = withTiming((value - min) / totalSteps, { duration: 200 });
-    lastValue.current = value;
-  }, [value, min, totalSteps]);
+  // Generate step markers
+  const steps = Array.from({ length: totalSteps + 1 }, (_, i) => min + i);
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={styles.gaugeContainer}>
-      {/* Value display */}
-      <View style={styles.gaugeValueContainer}>
-        <Text style={[styles.gaugeValue, { color: getColor(value) }]}>{value}</Text>
-        <Text style={styles.gaugeValueMax}>/{max}</Text>
-      </View>
+      {/* Central value display with animated glow */}
+      <Animated.View style={[styles.gaugeValueWrapper, circleAnimatedStyle]}>
+        <Animated.View style={[styles.gaugeValueGlow, { shadowColor: getColor(value) }, glowAnimatedStyle]} />
+        <LinearGradient
+          colors={getGradientColors(value)}
+          style={styles.gaugeValueBg}
+        >
+          <Animated.Text style={[styles.gaugeValue, numberAnimatedStyle]}>{value}</Animated.Text>
+        </LinearGradient>
+      </Animated.View>
 
       {/* Description */}
-      <Text style={styles.gaugeDescription}>
+      <Text style={[styles.gaugeDescription, { color: getColor(value) }]}>
         {value <= 3 ? 'Low impact' : value <= 6 ? 'Moderate impact' : 'High impact'}
       </Text>
 
-      {/* Swipeable Gauge track */}
-      <GestureDetector gesture={composedGesture}>
-        <View style={styles.gaugeTrackContainer}>
-          {/* Track background */}
-          <View style={styles.gaugeSliderTrack}>
-            {/* Filled portion */}
-            <Animated.View style={[styles.gaugeSliderFill, fillStyle]}>
-              <LinearGradient
-                colors={
-                  value <= 3
-                    ? ['#22C55E', '#16A34A']
-                    : value <= 6
-                      ? ['#F59E0B', '#D97706']
-                      : ['#EF4444', '#DC2626']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={StyleSheet.absoluteFill}
-              />
-            </Animated.View>
-          </View>
+      {/* Segmented control with touch */}
+      <View
+        style={styles.segmentedContainer}
+        onLayout={(e) => {
+          containerWidth.current = e.nativeEvent.layout.width;
+          e.target.measure((x, y, width, height, pageX, pageY) => {
+            containerX.current = pageX;
+          });
+        }}
+        {...panResponder.panHandlers}
+      >
+        <View style={styles.segmentedTrack}>
+          {steps.map((step, index) => {
+            const isSelected = step <= value;
+            const isActive = step === value;
+            const ratio = (step - min) / totalSteps;
+            const segmentColor = getSegmentColor(ratio, isSelected);
 
-          {/* Thumb */}
-          <Animated.View style={[styles.gaugeThumb, thumbStyle]}>
-            <View style={styles.gaugeThumbOuter}>
-              <View style={[styles.gaugeThumbInner, { backgroundColor: getColor(value) }]}>
-                <View style={styles.gaugeThumbHighlight} />
-              </View>
-            </View>
-          </Animated.View>
+            return (
+              <Animated.View
+                key={step}
+                entering={FadeIn.delay(index * 30).duration(300)}
+                style={[
+                  styles.segment,
+                  styles.segmentTouchable,
+                  { backgroundColor: segmentColor },
+                  isActive && styles.segmentActive,
+                  index === 0 && styles.segmentFirst,
+                  index === steps.length - 1 && styles.segmentLast,
+                ]}
+              >
+                {isActive && (
+                  <View style={styles.segmentGlow}>
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </View>
+                )}
+              </Animated.View>
+            );
+          })}
         </View>
-      </GestureDetector>
+
+        {/* Step numbers */}
+        <View style={styles.stepNumbers}>
+          {steps.map((step) => {
+            const ratio = (step - min) / totalSteps;
+            return (
+              <View key={step} style={styles.stepNumberTouchable}>
+                <Text
+                  style={[
+                    styles.stepNumber,
+                    step === value && styles.stepNumberActive,
+                    step === value && { color: getSegmentColor(ratio, true) },
+                  ]}
+                >
+                  {step}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
 
       {/* Labels */}
       <View style={styles.gaugeLabels}>
@@ -286,7 +350,7 @@ export default function QuestionsScreen() {
   const { answers, setAnswer } = useOnboardingStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
-  const [sliderValue, setSliderValue] = useState(5);
+  const [sliderValue, setSliderValue] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const currentQuestion = onboardingQuestions[currentIndex];
@@ -477,39 +541,24 @@ export default function QuestionsScreen() {
           </View>
         </Animated.View>
 
-        {/* Bottom CTA */}
-        {showCTA && (
-          <View style={styles.bottomCTA}>
-            <Pressable
-              onPress={currentQuestion.type === 'slider' ? handleSliderSubmit : handleMultipleSubmit}
-              disabled={currentQuestion.type === 'multiple' && selectedOptions.length === 0}
-              style={({ pressed }) => [
-                styles.ctaButton,
-                pressed && styles.ctaButtonPressed,
-                currentQuestion.type === 'multiple' && selectedOptions.length === 0 && styles.ctaButtonDisabled,
-              ]}
-            >
-              <LinearGradient
-                colors={
-                  currentQuestion.type === 'multiple' && selectedOptions.length === 0
-                    ? ['#2A2A3A', '#232330']
-                    : ['#8B5CF6', '#7C3AED']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.ctaGradient}
-              >
-                <Text style={[
-                  styles.ctaText,
-                  currentQuestion.type === 'multiple' && selectedOptions.length === 0 && styles.ctaTextDisabled,
-                ]}>
-                  Continue
-                </Text>
-              </LinearGradient>
-            </Pressable>
-          </View>
-        )}
       </SafeAreaView>
+
+      {/* Footer CTA */}
+      {showCTA && (
+        <View style={styles.footer}>
+          <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+            <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+              <View style={styles.footerInner}>
+                <ShimmerCTA
+                  title="Continue"
+                  onPress={currentQuestion.type === 'slider' ? handleSliderSubmit : handleMultipleSubmit}
+                  disabled={currentQuestion.type === 'multiple' && selectedOptions.length === 0}
+                />
+              </View>
+            </SafeAreaView>
+          </BlurView>
+        </View>
+      )}
     </View>
   );
 }
@@ -615,7 +664,8 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
     borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1.5,
@@ -704,128 +754,123 @@ const styles = StyleSheet.create({
   gaugeContainer: {
     alignItems: 'center',
   },
-  gaugeValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  gaugeValueWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
-  gaugeValue: {
-    fontSize: 80,
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: -4,
+  gaugeValueGlow: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 20,
   },
-  gaugeValueMax: {
-    fontSize: 28,
-    fontFamily: 'Inter_600SemiBold',
-    color: Colors.textMuted,
-    marginLeft: 4,
+  gaugeValueBg: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  gaugeValue: {
+    fontSize: 36,
+    fontFamily: 'Inter_700Bold',
+    color: '#FFFFFF',
+    letterSpacing: -1,
   },
   gaugeDescription: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Inter_500Medium',
     color: Colors.textSecondary,
-    marginBottom: 40,
+    marginBottom: 32,
   },
-  gaugeTrackContainer: {
+  segmentedContainer: {
     width: '100%',
-    height: 20,
-    justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
-  gaugeSliderTrack: {
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  segmentedTrack: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 12,
+  },
+  segmentTouchable: {
+    flex: 1,
+  },
+  segment: {
+    height: 32,
+    borderRadius: 4,
     overflow: 'hidden',
   },
-  gaugeSliderFill: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    borderRadius: 7,
+  segmentActive: {
+    transform: [{ scaleY: 1.1 }],
   },
-  gaugeThumb: {
-    position: 'absolute',
-    top: -6,
-    width: 32,
-    height: 32,
+  segmentFirst: {
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
   },
-  gaugeThumbOuter: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#1A1A24',
+  segmentLast: {
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+  },
+  segmentGlow: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  stepNumbers: {
+    flexDirection: 'row',
+  },
+  stepNumberTouchable: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
-  gaugeThumbInner: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+  stepNumber: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: Colors.textMuted,
   },
-  gaugeThumbHighlight: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    marginTop: -4,
-    marginLeft: -4,
+  stepNumberActive: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 14,
   },
   gaugeLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
+    marginTop: 8,
   },
   gaugeLabel: {
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontSize: 11,
+    fontFamily: 'Inter_600SemiBold',
     color: Colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
-  bottomCTA: {
-    paddingHorizontal: 24,
-    paddingBottom: 34,
-    paddingTop: 16,
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  ctaButton: {
-    borderRadius: 14,
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  ctaButtonPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
   },
-  ctaButtonDisabled: {
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  ctaGradient: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-  },
-  ctaText: {
-    fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  ctaTextDisabled: {
-    color: Colors.textMuted,
+  footerInner: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
   },
 });

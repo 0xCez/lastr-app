@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -19,6 +19,7 @@ import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-na
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/colors';
 import { useUserStore } from '@/store/userStore';
+import { CheckInModal, ProgressGraph } from '@/components/ui';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -63,7 +64,15 @@ export default function DashboardScreen() {
     currentStreak,
     dailyTasks,
     initializeDailyTasks,
+    isCheckInDue,
+    getScoreImprovement,
+    progressHistory,
+    startDate,
   } = useUserStore();
+
+  // Check-in modal state
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [checkInPromptDismissed, setCheckInPromptDismissed] = useState(false);
 
   // Calculate today's progress
   const completedToday = dailyTasks.filter(t => t.completed).length;
@@ -74,8 +83,16 @@ export default function DashboardScreen() {
   // Get the first uncompleted task for "Start Training" button
   const nextTask = dailyTasks.find(t => !t.completed);
 
-  // Current day in journey (mock - would be calculated from start date)
-  const currentDay = Math.min(currentStreak + 1, 90);
+  // Calculate current day in journey from start date
+  const currentDay = startDate
+    ? Math.min(Math.floor((Date.now() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1, 90)
+    : Math.min(currentStreak + 1, 90);
+
+  // Check if check-in is due
+  const checkInIsDue = isCheckInDue();
+
+  // Get improvement stats
+  const improvement = getScoreImprovement();
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -222,9 +239,12 @@ export default function DashboardScreen() {
             <View style={styles.headerRight}>
               <Pressable
                 style={styles.headerButton}
-                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                onPress={async () => {
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowCheckInModal(true);
+                }}
               >
-                <Ionicons name="stats-chart-outline" size={20} color={Colors.textSecondary} />
+                <Ionicons name="pulse-outline" size={20} color={Colors.textSecondary} />
               </Pressable>
               <Pressable
                 style={styles.headerButton}
@@ -400,6 +420,65 @@ export default function DashboardScreen() {
             </Pressable>
           </Animated.View>
 
+          {/* Check-in Prompt (shown when due) */}
+          {checkInIsDue && !checkInPromptDismissed && (
+            <Animated.View style={[styles.checkInCard, todayCardStyle]}>
+              <LinearGradient
+                colors={['rgba(245, 158, 11, 0.15)', 'rgba(245, 158, 11, 0.05)']}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.checkInHeader}>
+                <View style={styles.checkInIconWrap}>
+                  <Ionicons name="pulse" size={22} color="#F59E0B" />
+                </View>
+                <View style={styles.checkInContent}>
+                  <Text style={styles.checkInTitle}>Weekly Check-in Due</Text>
+                  <Text style={styles.checkInSubtitle}>
+                    Track your progress to update your score
+                  </Text>
+                </View>
+                <Pressable
+                  style={styles.checkInDismiss}
+                  onPress={() => setCheckInPromptDismissed(true)}
+                >
+                  <Ionicons name="close" size={18} color={Colors.textMuted} />
+                </Pressable>
+              </View>
+              <Pressable
+                style={styles.checkInButton}
+                onPress={async () => {
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setShowCheckInModal(true);
+                }}
+              >
+                <Text style={styles.checkInButtonText}>Complete Check-in</Text>
+                <Ionicons name="arrow-forward" size={16} color="#F59E0B" />
+              </Pressable>
+            </Animated.View>
+          )}
+
+          {/* Progress Graph Section */}
+          <Animated.View style={[styles.progressSection, journeyStyle]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="trending-up" size={18} color="#22C55E" />
+              <Text style={styles.sectionTitle}>Your Progress</Text>
+              {improvement.points > 0 && (
+                <View style={styles.improvementBadge}>
+                  <Ionicons name="arrow-up" size={12} color="#22C55E" />
+                  <Text style={styles.improvementBadgeText}>
+                    +{improvement.points} pts
+                  </Text>
+                </View>
+              )}
+            </View>
+            <ProgressGraph height={180} />
+            {progressHistory.length === 0 && (
+              <Text style={styles.progressHint}>
+                Complete your first weekly check-in to start tracking
+              </Text>
+            )}
+          </Animated.View>
+
           {/* Journey Timeline */}
           <Animated.View style={[styles.journeySection, journeyStyle]}>
             <View style={styles.sectionHeader}>
@@ -506,6 +585,13 @@ export default function DashboardScreen() {
           <View style={{ height: 20 }} />
         </ScrollView>
       </SafeAreaView>
+
+      {/* Check-in Modal */}
+      <CheckInModal
+        visible={showCheckInModal}
+        onClose={() => setShowCheckInModal(false)}
+        onComplete={() => setCheckInPromptDismissed(true)}
+      />
     </View>
   );
 }
@@ -863,5 +949,90 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
+  },
+  // Check-in card styles
+  checkInCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  checkInHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  checkInIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkInContent: {
+    flex: 1,
+  },
+  checkInTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  checkInSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    color: Colors.textSecondary,
+  },
+  checkInDismiss: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkInButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  checkInButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#F59E0B',
+  },
+  // Progress section styles
+  progressSection: {
+    marginBottom: 16,
+  },
+  improvementBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 'auto',
+  },
+  improvementBadgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#22C55E',
+  },
+  progressHint: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: Colors.textMuted,
+    textAlign: 'center',
+    marginTop: 12,
   },
 });

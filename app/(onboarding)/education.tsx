@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, FlatList, ViewToken, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, FlatList, ViewToken, Image } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -18,10 +19,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { ShimmerCTA } from '@/components/ui';
 
 const { width, height } = Dimensions.get('window');
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // Slide data with stats, icons, and indirect messaging
 const slideData = [
@@ -108,7 +108,7 @@ const SlideContent = ({
 }) => {
   const isPositive = index === 4; // Only slide 5 (THE SOLUTION) is green
 
-  // Individual element animations
+  // Icon/badge animations (dramatic)
   const badgeOpacity = useSharedValue(0);
   const badgeScale = useSharedValue(0.5);
   const badgeY = useSharedValue(-30);
@@ -116,47 +116,32 @@ const SlideContent = ({
   const iconScale = useSharedValue(0);
   const iconRotation = useSharedValue(-180);
   const iconPulse = useSharedValue(1);
-  const statOpacity = useSharedValue(0);
-  const statScale = useSharedValue(0.3);
-  const statY = useSharedValue(40);
-  const titleOpacity = useSharedValue(0);
-  const titleY = useSharedValue(50);
-  const titleScale = useSharedValue(0.9);
-  const descOpacity = useSharedValue(0);
-  const descY = useSharedValue(30);
-  const glowPulse = useSharedValue(0.2);
-  const glowScale = useSharedValue(0.5);
-  const logoOpacity = useSharedValue(0);
-  const logoScale = useSharedValue(0.5);
-  const logoRotateY = useSharedValue(90);
   const iconFloat = useSharedValue(0);
   const iconGlowOpacity = useSharedValue(0);
 
+  // Content animations (smooth fade-ins)
+  const glowOpacity = useSharedValue(0);
+  const statOpacity = useSharedValue(0);
+  const titleOpacity = useSharedValue(0);
+  const descOpacity = useSharedValue(0);
+  const logoOpacity = useSharedValue(0);
+
   useEffect(() => {
     if (isActive) {
-      // Reset all values
+      // Reset icon/badge values
       badgeOpacity.value = 0;
       badgeScale.value = 0.5;
       badgeY.value = -30;
       iconOpacity.value = 0;
       iconScale.value = 0;
       iconRotation.value = -180;
-      statOpacity.value = 0;
-      statScale.value = 0.3;
-      statY.value = 40;
-      titleOpacity.value = 0;
-      titleY.value = 50;
-      titleScale.value = 0.9;
-      descOpacity.value = 0;
-      descY.value = 30;
-      glowScale.value = 0.5;
-      logoOpacity.value = 0;
-      logoScale.value = 0.5;
-      logoRotateY.value = 90;
 
-      // Glow expands first (creates anticipation)
-      glowScale.value = withDelay(0, withSpring(1.2, { damping: 8, stiffness: 80 }));
-      glowPulse.value = withDelay(0, withTiming(0.8, { duration: 400 }));
+      // Reset content values
+      glowOpacity.value = 0;
+      statOpacity.value = 0;
+      titleOpacity.value = 0;
+      descOpacity.value = 0;
+      logoOpacity.value = 0;
 
       // Badge drops in from top with bounce
       badgeOpacity.value = withDelay(100, withTiming(1, { duration: 300 }));
@@ -198,34 +183,12 @@ const SlideContent = ({
         true
       ));
 
-      // Stat number scales up dramatically
-      statOpacity.value = withDelay(450, withTiming(1, { duration: 350 }));
-      statScale.value = withDelay(450, withSpring(1, { damping: 6, stiffness: 100 }));
-      statY.value = withDelay(450, withSpring(0, { damping: 12, stiffness: 120 }));
-
-      // Title slides up with scale
-      titleOpacity.value = withDelay(650, withTiming(1, { duration: 400 }));
-      titleY.value = withDelay(650, withSpring(0, { damping: 12, stiffness: 90 }));
-      titleScale.value = withDelay(650, withSpring(1, { damping: 10, stiffness: 120 }));
-
-      // Hero logo flips in (for last slide)
-      logoOpacity.value = withDelay(750, withTiming(1, { duration: 400 }));
-      logoScale.value = withDelay(750, withSpring(1, { damping: 8, stiffness: 100 }));
-      logoRotateY.value = withDelay(750, withSpring(0, { damping: 10, stiffness: 80 }));
-
-      // Description fades in last
-      descOpacity.value = withDelay(850, withTiming(1, { duration: 450 }));
-      descY.value = withDelay(850, withSpring(0, { damping: 14, stiffness: 100 }));
-
-      // Glow settles into pulse
-      glowPulse.value = withDelay(600, withRepeat(
-        withSequence(
-          withTiming(0.8, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.3, { duration: 2000, easing: Easing.inOut(Easing.ease) })
-        ),
-        -1,
-        true
-      ));
+      // Content smooth fade-ins (gentle, minimal stagger)
+      glowOpacity.value = withTiming(0.5, { duration: 400, easing: Easing.out(Easing.ease) });
+      statOpacity.value = withDelay(50, withTiming(1, { duration: 350, easing: Easing.out(Easing.ease) }));
+      titleOpacity.value = withDelay(100, withTiming(1, { duration: 350, easing: Easing.out(Easing.ease) }));
+      logoOpacity.value = withDelay(120, withTiming(1, { duration: 350, easing: Easing.out(Easing.ease) }));
+      descOpacity.value = withDelay(150, withTiming(1, { duration: 350, easing: Easing.out(Easing.ease) }));
     }
   }, [isActive]);
 
@@ -288,39 +251,25 @@ const SlideContent = ({
     ] as const,
   }));
 
+  // Content animated styles (smooth fade-ins only)
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
+  }));
+
   const statStyle = useAnimatedStyle(() => ({
     opacity: statOpacity.value,
-    transform: [
-      { translateY: statY.value },
-      { scale: statScale.value },
-    ] as const,
   }));
 
   const titleStyle = useAnimatedStyle(() => ({
     opacity: titleOpacity.value,
-    transform: [
-      { translateY: titleY.value },
-      { scale: titleScale.value },
-    ] as const,
   }));
 
   const descStyle = useAnimatedStyle(() => ({
     opacity: descOpacity.value,
-    transform: [{ translateY: descY.value }],
-  }));
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glowPulse.value,
-    transform: [{ scale: glowScale.value }],
   }));
 
   const logoStyle = useAnimatedStyle(() => ({
     opacity: logoOpacity.value,
-    transform: [
-      { scale: logoScale.value },
-      { perspective: 1000 },
-      { rotateY: `${logoRotateY.value}deg` },
-    ] as const,
   }));
 
   return (
@@ -332,7 +281,7 @@ const SlideContent = ({
         end={{ x: 0.5, y: 1 }}
       />
 
-      {/* Accent glow */}
+      {/* Accent glow - smooth fade in */}
       <Animated.View style={[styles.accentGlow, glowStyle]}>
         <LinearGradient
           colors={[item.accentColor, 'transparent']}
@@ -375,16 +324,16 @@ const SlideContent = ({
             <Animated.Text style={[styles.statLabel, statStyle]}>{item.statLabel}</Animated.Text>
           </Animated.View>
 
-          {/* Title */}
+          {/* Title - smooth fade in */}
           <Animated.Text style={[
             styles.title,
             isPositive && { color: '#22C55E' },
-            titleStyle
+            titleStyle,
           ]}>
             {item.title}
           </Animated.Text>
 
-          {/* Logo for last slide */}
+          {/* Logo for last slide - smooth fade in */}
           {'showLogo' in item && item.showLogo && (
             <Animated.Image
               source={require('@/assets/images/logo_nobg.png')}
@@ -393,7 +342,7 @@ const SlideContent = ({
             />
           )}
 
-          {/* Description */}
+          {/* Description - smooth fade in */}
           <Animated.Text style={[styles.description, descStyle]}>{item.description}</Animated.Text>
         </Animated.View>
       </View>
@@ -406,25 +355,25 @@ const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<typeof slideD
 export default function EducationScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
-  const buttonScale = useSharedValue(1);
   const scrollX = useSharedValue(0);
-  const buttonGlow = useSharedValue(0.5);
 
   const isLastSlide = currentIndex === slideData.length - 1;
-  const isPositiveSlide = currentIndex === 4; // Only slide 5 (THE SOLUTION) is green
   const currentSlide = slideData[currentIndex];
 
-  // Pulsing button glow
-  useEffect(() => {
-    buttonGlow.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.5, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
-    );
-  }, []);
+  // Get CTA colors based on current slide's accent color
+  const getCtaColors = (): [string, string] => {
+    const accent = currentSlide.accentColor;
+    // Create gradient pair from accent color (lighter to darker)
+    switch (accent) {
+      case '#EF4444': return ['#EF4444', '#DC2626']; // Red
+      case '#F97316': return ['#F97316', '#EA580C']; // Orange
+      case '#EAB308': return ['#EAB308', '#CA8A04']; // Yellow
+      case '#A855F7': return ['#A855F7', '#9333EA']; // Purple
+      case '#22C55E': return ['#22C55E', '#16A34A']; // Green
+      case '#8B5CF6': return ['#8B5CF6', '#7C3AED']; // Violet (last slide)
+      default: return ['#8B5CF6', '#7C3AED'];
+    }
+  };
 
   const viewabilityConfig = {
     viewAreaCoveragePercentThreshold: 50,
@@ -447,10 +396,6 @@ export default function EducationScreen() {
 
   const handleNext = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    buttonScale.value = withSequence(
-      withSpring(0.95, { damping: 15 }),
-      withSpring(1, { damping: 15 })
-    );
 
     if (currentIndex < slideData.length - 1) {
       flatListRef.current?.scrollToIndex({
@@ -461,15 +406,6 @@ export default function EducationScreen() {
       router.push('/(onboarding)/rewiring-benefits');
     }
   };
-
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
-
-  const buttonGlowStyle = useAnimatedStyle(() => ({
-    opacity: buttonGlow.value * 0.6,
-    transform: [{ scale: 1 + buttonGlow.value * 0.05 }],
-  }));
 
   const renderSlide = ({ item, index }: { item: typeof slideData[0]; index: number }) => {
     return (
@@ -510,38 +446,23 @@ export default function EducationScreen() {
           })}
         />
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          {/* Button glow effect */}
-          <Animated.View style={[styles.buttonGlow, buttonGlowStyle]}>
-            <LinearGradient
-              colors={[
-                isPositiveSlide ? 'rgba(34, 197, 94, 0.4)' : `${currentSlide.accentColor}40`,
-                'transparent'
-              ]}
-              style={styles.buttonGlowGradient}
-            />
-          </Animated.View>
-
-          <AnimatedPressable onPress={handleNext} style={[styles.ctaButton, buttonStyle]}>
-            <LinearGradient
-              colors={
-                isPositiveSlide
-                  ? ['#22C55E', '#16A34A']
-                  : [currentSlide.accentColor, currentSlide.accentColor]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaGradient}
-            >
-              <Text style={styles.ctaText}>
-                {isLastSlide ? 'Get Started' : 'Continue'}
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-            </LinearGradient>
-          </AnimatedPressable>
-        </View>
       </SafeAreaView>
+
+      {/* Footer CTA */}
+      <View style={styles.footer}>
+        <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+          <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+            <View style={styles.footerInner}>
+              <ShimmerCTA
+                title={isLastSlide ? 'Get Started' : 'Continue'}
+                icon="arrow-forward"
+                onPress={handleNext}
+                colors={getCtaColors()}
+              />
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </View>
     </View>
   );
 }
@@ -674,39 +595,26 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   footer: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 28,
-    position: 'relative',
-  },
-  buttonGlow: {
     position: 'absolute',
-    top: -20,
+    bottom: 0,
     left: 0,
     right: 0,
-    height: 100,
-    zIndex: 0,
   },
-  buttonGlowGradient: {
-    flex: 1,
-    borderRadius: 50,
-  },
-  ctaButton: {
-    borderRadius: 14,
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
-    zIndex: 1,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  ctaGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    gap: 6,
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
   },
-  ctaText: {
-    fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
+  footerInner: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
   },
 });

@@ -15,8 +15,8 @@ import { Colors } from '@/constants/colors';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import * as Haptics from 'expo-haptics';
 
-const CIRCLE_SIZE = 180;
-const STROKE_WIDTH = 12;
+const CIRCLE_SIZE = 190;
+const STROKE_WIDTH = 13;
 const RADIUS = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 

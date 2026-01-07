@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,6 +15,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { goals } from '@/constants/onboarding';
+import { ShimmerCTA } from '@/components/ui';
+
+const { width } = Dimensions.get('window');
+const CARD_GAP = 12;
+const HORIZONTAL_PADDING = 24;
+const CARD_WIDTH = (width - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
 
 // Icon mapping for goals
 const goalIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -102,7 +109,6 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, isSelected, onToggle, index }
 export default function GoalsScreen() {
   const { setGoals: saveGoals } = useOnboardingStore();
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
-  const buttonScale = useSharedValue(1);
 
   const toggleGoal = (goalId: string) => {
     if (selectedGoals.includes(goalId)) {
@@ -114,17 +120,9 @@ export default function GoalsScreen() {
 
   const handleContinue = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    buttonScale.value = withSpring(0.95, { damping: 15 });
-    setTimeout(() => {
-      buttonScale.value = withSpring(1, { damping: 15 });
-    }, 100);
     saveGoals(selectedGoals);
     router.push('/(onboarding)/rating');
   };
-
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
 
   return (
     <View style={styles.container}>
@@ -171,33 +169,22 @@ export default function GoalsScreen() {
             ))}
           </View>
         </ScrollView>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <AnimatedPressable
-            onPress={handleContinue}
-            style={buttonStyle}
-            disabled={selectedGoals.length === 0}
-          >
-            <LinearGradient
-              colors={selectedGoals.length === 0
-                ? ['#2A2A3A', '#232330']
-                : ['#8B5CF6', '#7C3AED']
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaButton}
-            >
-              <Text style={[
-                styles.ctaText,
-                selectedGoals.length === 0 && styles.ctaTextDisabled
-              ]}>
-                Continue
-              </Text>
-            </LinearGradient>
-          </AnimatedPressable>
-        </View>
       </SafeAreaView>
+
+      {/* Footer CTA */}
+      <View style={styles.footer}>
+        <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+          <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+            <View style={styles.footerInner}>
+              <ShimmerCTA
+                title="Continue"
+                onPress={handleContinue}
+                disabled={selectedGoals.length === 0}
+              />
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </View>
     </View>
   );
 }
@@ -259,7 +246,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 48,
-    paddingBottom: 24,
+    paddingBottom: 140,
   },
   goalsGrid: {
     flexDirection: 'row',
@@ -267,7 +254,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   goalCardWrapper: {
-    width: '48%',
+    width: CARD_WIDTH,
   },
   goalCard: {
     padding: 16,
@@ -276,7 +263,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
-    minHeight: 140,
+    height: 150,
   },
   goalCardSelected: {
     borderColor: 'rgba(139, 92, 246, 0.5)',
@@ -324,22 +311,26 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+  },
+  footerInner: {
     paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 34,
-  },
-  ctaButton: {
-    paddingVertical: 17,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  ctaText: {
-    fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  ctaTextDisabled: {
-    color: Colors.textMuted,
+    paddingTop: 24,
+    paddingBottom: 16,
   },
 });

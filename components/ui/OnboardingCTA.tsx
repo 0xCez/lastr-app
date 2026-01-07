@@ -1,12 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Text, StyleSheet, Pressable, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
+  withRepeat,
+  withSequence,
+  Easing,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -26,24 +31,55 @@ export const OnboardingCTA: React.FC<OnboardingCTAProps> = ({
 }) => {
   const scale = useSharedValue(1);
   const pressed = useSharedValue(0);
+  const shinePosition = useSharedValue(-100);
+
+  // Pulse and shine animations when not disabled
+  useEffect(() => {
+    if (!disabled) {
+      // Subtle pulse animation
+      scale.value = withRepeat(
+        withSequence(
+          withTiming(1.02, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+      // Shine sweep animation
+      shinePosition.value = withRepeat(
+        withSequence(
+          withTiming(400, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(-100, { duration: 0 })
+        ),
+        -1,
+        false
+      );
+    }
+  }, [disabled]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: disabled ? 1 : scale.value }],
   }));
 
   const innerGlowStyle = useAnimatedStyle(() => ({
     opacity: pressed.value * 0.5,
   }));
 
+  const shineAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shinePosition.value }],
+  }));
+
   const handlePressIn = () => {
     if (!disabled) {
-      scale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
+      scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
       pressed.value = withSpring(1, { damping: 15 });
     }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+    if (!disabled) {
+      scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+    }
     pressed.value = withSpring(0, { damping: 15 });
   };
 
@@ -71,25 +107,28 @@ export const OnboardingCTA: React.FC<OnboardingCTAProps> = ({
         end={{ x: 1, y: 0 }}
         style={styles.gradient}
       >
-        {/* Inner shine effect */}
+        {/* Animated shine sweep */}
         {!disabled && (
-          <LinearGradient
-            colors={['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.shine}
-          />
+          <Animated.View style={[styles.shineSweep, shineAnimatedStyle]}>
+            <LinearGradient
+              colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
         )}
 
         {/* Press highlight */}
         <Animated.View style={[styles.pressHighlight, innerGlowStyle]} />
 
         <View style={styles.textContainer}>
+          <Ionicons name="arrow-forward" size={20} color={disabled ? Colors.textMuted : '#FFFFFF'} style={{ marginRight: 8 }} />
           <Text style={[styles.text, disabled && styles.textDisabled]}>{title}</Text>
-          {subtitle && (
-            <Text style={[styles.subtitle, disabled && styles.textDisabled]}>{subtitle}</Text>
-          )}
         </View>
+        {subtitle && (
+          <Text style={[styles.subtitleText, disabled && styles.textDisabled]}>{subtitle}</Text>
+        )}
       </LinearGradient>
     </AnimatedPressable>
   );
@@ -112,14 +151,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
   },
-  shine: {
+  shineSweep: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
-    height: '50%',
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    bottom: 0,
+    width: 60,
+    left: -60,
   },
   pressHighlight: {
     position: 'absolute',
@@ -130,10 +167,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   textContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   text: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
     letterSpacing: 0.3,
@@ -141,10 +180,10 @@ const styles = StyleSheet.create({
   textDisabled: {
     color: Colors.textMuted,
   },
-  subtitle: {
+  subtitleText: {
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
     color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 2,
+    marginTop: 4,
   },
 });

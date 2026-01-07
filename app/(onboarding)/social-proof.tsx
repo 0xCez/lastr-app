@@ -1,19 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  FadeInDown,
-} from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/colors';
 import { socialProofReviews } from '@/constants/onboarding';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { ShimmerCTA } from '@/components/ui';
 
 const StarRating = ({ rating }: { rating: number }) => (
   <View style={styles.stars}>
@@ -26,20 +21,10 @@ const StarRating = ({ rating }: { rating: number }) => (
 );
 
 export default function SocialProofScreen() {
-  const buttonScale = useSharedValue(1);
-
   const handleContinue = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    buttonScale.value = withSpring(0.95, { damping: 15 });
-    setTimeout(() => {
-      buttonScale.value = withSpring(1, { damping: 15 });
-    }, 100);
     router.push('/(onboarding)/goals');
   };
-
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
 
   return (
     <View style={styles.container}>
@@ -180,21 +165,21 @@ export default function SocialProofScreen() {
             </View>
           </View>
         </ScrollView>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <AnimatedPressable onPress={handleContinue} style={buttonStyle}>
-            <LinearGradient
-              colors={['#8B5CF6', '#7C3AED']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.ctaButton}
-            >
-              <Text style={styles.ctaText}>Continue</Text>
-            </LinearGradient>
-          </AnimatedPressable>
-        </View>
       </SafeAreaView>
+
+      {/* Footer CTA */}
+      <View style={styles.footer}>
+        <BlurView intensity={30} tint="dark" style={styles.footerBlur}>
+          <SafeAreaView edges={['bottom']} style={styles.footerSafeArea}>
+            <View style={styles.footerInner}>
+              <ShimmerCTA
+                title="Continue"
+                onPress={handleContinue}
+              />
+            </View>
+          </SafeAreaView>
+        </BlurView>
+      </View>
     </View>
   );
 }
@@ -294,7 +279,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 48,
-    paddingBottom: 24,
+    paddingBottom: 140,
   },
   reviewCard: {
     marginBottom: 12,
@@ -392,18 +377,26 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  footerBlur: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  footerSafeArea: {
+    backgroundColor: 'rgba(26, 26, 36, 0.8)',
+  },
+  footerInner: {
     paddingHorizontal: 24,
-    paddingBottom: 34,
-  },
-  ctaButton: {
-    paddingVertical: 17,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  ctaText: {
-    fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
+    paddingTop: 24,
+    paddingBottom: 16,
   },
 });

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,19 +10,10 @@ import Animated, {
   withSpring,
   Easing,
   interpolate,
-  interpolateColor,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-
-// "Lastr'" text as SVG paths - approximated for the bold sans-serif look
-// These paths represent the letters L, a, s, t, r, '
-const LOGO_WIDTH = 280;
-const LOGO_HEIGHT = 60;
+const LOGO_HEIGHT = 70;
 
 interface AnimatedSplashProps {
   onAnimationComplete?: () => void;
@@ -30,64 +21,91 @@ interface AnimatedSplashProps {
   size?: 'small' | 'medium' | 'large';
 }
 
+// Purple teardrop/drop SVG component - styled like an apostrophe
+const DropIcon: React.FC<{ size: number }> = ({ size }) => (
+  <View style={{ transform: [{ rotate: '-135deg' }] }}>
+    <Svg width={size * 0.22} height={size * 0.28} viewBox="0 0 24 30">
+      <Path
+        d="M12 0C12 0 2 12 2 19C2 24.5 6.5 29 12 29C17.5 29 22 24.5 22 19C22 12 12 0 12 0Z"
+        fill="#8B5CF6"
+      />
+    </Svg>
+  </View>
+);
+
 export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
   onAnimationComplete,
   isLoading = false,
   size = 'large',
 }) => {
-  // Animation values
+  // Main logo animation
   const logoOpacity = useSharedValue(0);
-  const logoScale = useSharedValue(0.8);
-  const glowOpacity = useSharedValue(0);
-  const glowScale = useSharedValue(0.5);
-  const shimmerPosition = useSharedValue(-1);
-  const pulseScale = useSharedValue(1);
-  const letterStagger = useSharedValue(0);
+  const logoScale = useSharedValue(0.85);
+  const logoY = useSharedValue(15);
 
-  // Individual letter animations
-  const letter1 = useSharedValue(0);
-  const letter2 = useSharedValue(0);
-  const letter3 = useSharedValue(0);
-  const letter4 = useSharedValue(0);
-  const letter5 = useSharedValue(0);
-  const letter6 = useSharedValue(0);
+  // Breathing for loading state
+  const breatheScale = useSharedValue(1);
 
-  const sizeMultiplier = size === 'small' ? 0.5 : size === 'medium' ? 0.75 : 1;
-  const scaledWidth = LOGO_WIDTH * sizeMultiplier;
+  // Individual letter animations (L-a-s-t-r + drop)
+  const letterOpacities = [
+    useSharedValue(0),
+    useSharedValue(0),
+    useSharedValue(0),
+    useSharedValue(0),
+    useSharedValue(0),
+    useSharedValue(0), // drop
+  ];
+  const letterYs = [
+    useSharedValue(14),
+    useSharedValue(14),
+    useSharedValue(14),
+    useSharedValue(14),
+    useSharedValue(14),
+    useSharedValue(10), // drop starts higher
+  ];
+
+  const sizeMultiplier = size === 'small' ? 0.5 : size === 'medium' ? 0.7 : 1;
   const scaledHeight = LOGO_HEIGHT * sizeMultiplier;
+  const fontSize = 52 * sizeMultiplier;
 
   useEffect(() => {
-    // Staggered letter reveal
-    const staggerDelay = 80;
-    letter1.value = withDelay(0, withSpring(1, { damping: 12, stiffness: 100 }));
-    letter2.value = withDelay(staggerDelay * 1, withSpring(1, { damping: 12, stiffness: 100 }));
-    letter3.value = withDelay(staggerDelay * 2, withSpring(1, { damping: 12, stiffness: 100 }));
-    letter4.value = withDelay(staggerDelay * 3, withSpring(1, { damping: 12, stiffness: 100 }));
-    letter5.value = withDelay(staggerDelay * 4, withSpring(1, { damping: 12, stiffness: 100 }));
-    letter6.value = withDelay(staggerDelay * 5, withSpring(1, { damping: 12, stiffness: 100 }));
+    // Phase 1: Container fade in
+    logoOpacity.value = withTiming(1, {
+      duration: 400,
+      easing: Easing.out(Easing.cubic),
+    });
+    logoScale.value = withSpring(1, {
+      damping: 18,
+      stiffness: 100,
+    });
+    logoY.value = withSpring(0, {
+      damping: 18,
+      stiffness: 100,
+    });
 
-    // Main logo animation
-    logoOpacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
-    logoScale.value = withSpring(1, { damping: 15, stiffness: 100 });
+    // Phase 2: Staggered letter reveal
+    const staggerDelay = 70;
+    const springConfig = { damping: 12, stiffness: 100 };
 
-    // Glow animation
-    glowOpacity.value = withDelay(300, withTiming(0.6, { duration: 600 }));
-    glowScale.value = withDelay(300, withSpring(1, { damping: 12 }));
+    letterOpacities.forEach((opacity, i) => {
+      opacity.value = withDelay(
+        150 + i * staggerDelay,
+        withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) })
+      );
+    });
 
-    // Shimmer effect
-    shimmerPosition.value = withDelay(
-      600,
-      withTiming(2, { duration: 1200, easing: Easing.inOut(Easing.ease) })
-    );
+    letterYs.forEach((y, i) => {
+      y.value = withDelay(150 + i * staggerDelay, withSpring(0, springConfig));
+    });
 
-    // Pulse animation for loading state
+    // Loading state: gentle breathing
     if (isLoading) {
-      pulseScale.value = withDelay(
-        1000,
+      breatheScale.value = withDelay(
+        900,
         withRepeat(
           withSequence(
-            withTiming(1.02, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-            withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+            withTiming(1.025, { duration: 1400, easing: Easing.inOut(Easing.ease) }),
+            withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.ease) })
           ),
           -1,
           true
@@ -95,206 +113,115 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
       );
     }
 
-    // Callback when animation is complete
+    // Completion callback
     if (onAnimationComplete) {
-      const timeout = setTimeout(() => {
-        onAnimationComplete();
-      }, 2000);
+      const timeout = setTimeout(onAnimationComplete, 1400);
       return () => clearTimeout(timeout);
     }
   }, [isLoading]);
 
-  const logoStyle = useAnimatedStyle(() => ({
+  const containerStyle = useAnimatedStyle(() => ({
     opacity: logoOpacity.value,
     transform: [
-      { scale: logoScale.value * pulseScale.value },
+      { scale: logoScale.value * breatheScale.value },
+      { translateY: logoY.value },
     ],
   }));
 
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glowOpacity.value,
-    transform: [{ scale: glowScale.value }],
-  }));
+  // Letter styles
+  const createLetterStyle = (index: number) =>
+    useAnimatedStyle(() => ({
+      opacity: letterOpacities[index].value,
+      transform: [{ translateY: letterYs[index].value }],
+    }));
 
-  const shimmerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shimmerPosition.value * scaledWidth }],
-  }));
-
-  // Letter animation styles
-  const letter1Style = useAnimatedStyle(() => ({
-    opacity: letter1.value,
+  const letter0Style = createLetterStyle(0);
+  const letter1Style = createLetterStyle(1);
+  const letter2Style = createLetterStyle(2);
+  const letter3Style = createLetterStyle(3);
+  const letter4Style = createLetterStyle(4);
+  const dropStyle = useAnimatedStyle(() => ({
+    opacity: letterOpacities[5].value,
     transform: [
-      { translateY: interpolate(letter1.value, [0, 1], [20, 0]) },
-    ],
-  }));
-
-  const letter2Style = useAnimatedStyle(() => ({
-    opacity: letter2.value,
-    transform: [
-      { translateY: interpolate(letter2.value, [0, 1], [20, 0]) },
-    ],
-  }));
-
-  const letter3Style = useAnimatedStyle(() => ({
-    opacity: letter3.value,
-    transform: [
-      { translateY: interpolate(letter3.value, [0, 1], [20, 0]) },
-    ],
-  }));
-
-  const letter4Style = useAnimatedStyle(() => ({
-    opacity: letter4.value,
-    transform: [
-      { translateY: interpolate(letter4.value, [0, 1], [20, 0]) },
-    ],
-  }));
-
-  const letter5Style = useAnimatedStyle(() => ({
-    opacity: letter5.value,
-    transform: [
-      { translateY: interpolate(letter5.value, [0, 1], [20, 0]) },
-    ],
-  }));
-
-  const letter6Style = useAnimatedStyle(() => ({
-    opacity: letter6.value,
-    transform: [
-      { translateY: interpolate(letter6.value, [0, 1], [20, 0]) },
-      { scale: interpolate(letter6.value, [0, 1], [0.5, 1]) },
+      { translateY: letterYs[5].value },
+      { scale: interpolate(letterOpacities[5].value, [0, 1], [0.6, 1]) },
     ],
   }));
 
   return (
     <View style={styles.container}>
-      {/* Background glow */}
-      <Animated.View style={[styles.glowContainer, glowStyle]}>
-        <LinearGradient
-          colors={['rgba(139, 92, 246, 0.3)', 'rgba(139, 92, 246, 0.1)', 'transparent']}
-          style={styles.glowGradient}
-        />
-      </Animated.View>
-
-      {/* Logo container */}
-      <Animated.View style={[styles.logoContainer, logoStyle]}>
-        {/* Shimmer overlay */}
-        <View style={styles.shimmerContainer}>
-          <Animated.View style={[styles.shimmer, shimmerStyle]}>
-            <LinearGradient
-              colors={['transparent', 'rgba(255, 255, 255, 0.3)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.shimmerGradient}
-            />
-          </Animated.View>
-        </View>
-
-        {/* Text logo using individual animated letters */}
-        <View style={[styles.textContainer, { width: scaledWidth, height: scaledHeight }]}>
-          <Animated.Text style={[styles.letter, { fontSize: 52 * sizeMultiplier }, letter1Style]}>
+      <Animated.View style={[styles.logoContainer, containerStyle]}>
+        {/* Letters */}
+        <View style={[styles.textContainer, { height: scaledHeight }]}>
+          <Animated.Text style={[styles.letter, { fontSize }, letter0Style]}>
             L
           </Animated.Text>
-          <Animated.Text style={[styles.letter, { fontSize: 52 * sizeMultiplier }, letter2Style]}>
+          <Animated.Text style={[styles.letter, { fontSize }, letter1Style]}>
             a
           </Animated.Text>
-          <Animated.Text style={[styles.letter, { fontSize: 52 * sizeMultiplier }, letter3Style]}>
+          <Animated.Text style={[styles.letter, { fontSize }, letter2Style]}>
             s
           </Animated.Text>
-          <Animated.Text style={[styles.letter, { fontSize: 52 * sizeMultiplier }, letter4Style]}>
+          <Animated.Text style={[styles.letter, { fontSize }, letter3Style]}>
             t
           </Animated.Text>
-          <Animated.Text style={[styles.letter, { fontSize: 52 * sizeMultiplier }, letter5Style]}>
+          <Animated.Text style={[styles.letter, { fontSize }, letter4Style]}>
             r
           </Animated.Text>
-          <Animated.Text style={[styles.apostrophe, { fontSize: 52 * sizeMultiplier }, letter6Style]}>
-            '
-          </Animated.Text>
+          <Animated.View style={[styles.dropContainer, dropStyle]}>
+            <DropIcon size={fontSize} />
+          </Animated.View>
         </View>
       </Animated.View>
 
-      {/* Loading indicator dots */}
-      {isLoading && (
-        <LoadingDots />
-      )}
+      {/* Loading bar */}
+      {isLoading && <LoadingBar />}
     </View>
   );
 };
 
-// Separate loading dots component
-const LoadingDots: React.FC = () => {
-  const dot1 = useSharedValue(0);
-  const dot2 = useSharedValue(0);
-  const dot3 = useSharedValue(0);
+// Minimal loading indicator
+const LoadingBar: React.FC = () => {
+  const width = useSharedValue(0.2);
+  const opacity = useSharedValue(0);
 
   useEffect(() => {
-    const duration = 400;
-    const delay = 150;
+    opacity.value = withDelay(700, withTiming(1, { duration: 300 }));
 
-    dot1.value = withDelay(
-      500,
+    width.value = withDelay(
+      700,
       withRepeat(
         withSequence(
-          withTiming(1, { duration }),
-          withTiming(0, { duration })
-        ),
-        -1
-      )
-    );
-
-    dot2.value = withDelay(
-      500 + delay,
-      withRepeat(
-        withSequence(
-          withTiming(1, { duration }),
-          withTiming(0, { duration })
-        ),
-        -1
-      )
-    );
-
-    dot3.value = withDelay(
-      500 + delay * 2,
-      withRepeat(
-        withSequence(
-          withTiming(1, { duration }),
-          withTiming(0, { duration })
+          withTiming(1, { duration: 1000, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
+          withTiming(0.2, { duration: 1000, easing: Easing.bezier(0.4, 0, 0.2, 1) })
         ),
         -1
       )
     );
   }, []);
 
-  const dot1Style = useAnimatedStyle(() => ({
-    opacity: interpolate(dot1.value, [0, 1], [0.3, 1]),
-    transform: [{ scale: interpolate(dot1.value, [0, 1], [0.8, 1.2]) }],
+  const containerStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
   }));
 
-  const dot2Style = useAnimatedStyle(() => ({
-    opacity: interpolate(dot2.value, [0, 1], [0.3, 1]),
-    transform: [{ scale: interpolate(dot2.value, [0, 1], [0.8, 1.2]) }],
-  }));
-
-  const dot3Style = useAnimatedStyle(() => ({
-    opacity: interpolate(dot3.value, [0, 1], [0.3, 1]),
-    transform: [{ scale: interpolate(dot3.value, [0, 1], [0.8, 1.2]) }],
+  const barStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: width.value }],
+    opacity: interpolate(width.value, [0.2, 0.6, 1], [0.5, 1, 0.8]),
   }));
 
   return (
-    <View style={styles.dotsContainer}>
-      <Animated.View style={[styles.dot, dot1Style]} />
-      <Animated.View style={[styles.dot, dot2Style]} />
-      <Animated.View style={[styles.dot, dot3Style]} />
-    </View>
+    <Animated.View style={[styles.loadingContainer, containerStyle]}>
+      <Animated.View style={[styles.loadingBar, barStyle]} />
+    </Animated.View>
   );
 };
 
-// Compact loader version
-export const LastrLoader: React.FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => {
-  return (
-    <View style={styles.loaderContainer}>
-      <AnimatedSplash isLoading size={size} />
-    </View>
-  );
-};
+// Compact loader
+export const LastrLoader: React.FC<{ size?: 'small' | 'medium' }> = ({ size = 'small' }) => (
+  <View style={styles.loaderContainer}>
+    <AnimatedSplash isLoading size={size} />
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -308,37 +235,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
-  glowContainer: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  glowGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 150,
-  },
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  shimmerContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    overflow: 'hidden',
-  },
-  shimmer: {
-    position: 'absolute',
-    width: 80,
-    height: '100%',
-    left: -80,
-  },
-  shimmerGradient: {
-    flex: 1,
   },
   textContainer: {
     flexDirection: 'row',
@@ -346,24 +245,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   letter: {
-    fontFamily: 'NeueHaas-Black',
+    fontFamily: 'Aeonik-Black',
     color: '#FFFFFF',
-    letterSpacing: -1,
+    letterSpacing: -1.5,
   },
-  apostrophe: {
-    fontFamily: 'NeueHaas-Black',
-    color: '#8B5CF6',
-    letterSpacing: -1,
+  dropContainer: {
+    marginLeft: -2,
+    marginTop: -8,
+    alignSelf: 'flex-start',
   },
-  dotsContainer: {
-    flexDirection: 'row',
-    marginTop: 40,
-    gap: 8,
+  loadingContainer: {
+    position: 'absolute',
+    bottom: '28%',
+    alignItems: 'center',
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  loadingBar: {
+    width: 50,
+    height: 3,
+    borderRadius: 1.5,
     backgroundColor: '#8B5CF6',
   },
 });
