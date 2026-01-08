@@ -17,18 +17,13 @@ import {
 } from '@expo-google-fonts/dm-sans';
 import { Colors } from '@/constants/colors';
 import { useAuthStore } from '@/store/authStore';
-import { initializeRevenueCat } from '@/lib/revenuecat';
+import { RevenueCatProvider } from '@/providers/RevenueCatProvider';
 
 // Prevent auto hide
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { initialize, isInitialized } = useAuthStore();
-
-  // Initialize RevenueCat on app start
-  useEffect(() => {
-    initializeRevenueCat();
-  }, []);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -66,19 +61,21 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
-          animation: 'slide_from_right',
-        }}
-      >
-        <Stack.Screen name="(onboarding)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="exercise/[id]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      <RevenueCatProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: Colors.background },
+            animation: 'slide_from_right',
+          }}
+        >
+          <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="exercise/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </RevenueCatProvider>
     </GestureHandlerRootView>
   );
 }

@@ -1,10 +1,31 @@
-import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
+import { Tabs, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Colors } from '@/constants/colors';
+import { useRevenueCat } from '@/providers/RevenueCatProvider';
+import { useUserStore } from '@/store/userStore';
 
 export default function TabsLayout() {
+  const { isSubscribed, isLoading: rcLoading } = useRevenueCat();
+  const { isPremium, setPremium, onboardingCompleted } = useUserStore();
+
+  // Sync RevenueCat subscription status with local store
+  useEffect(() => {
+    if (!rcLoading && isSubscribed !== isPremium) {
+      setPremium(isSubscribed);
+    }
+  }, [isSubscribed, rcLoading, isPremium, setPremium]);
+
+  // Gate access: redirect to paywall if not subscribed
+  useEffect(() => {
+    // Only check after RC loads and if user completed onboarding
+    if (!rcLoading && onboardingCompleted && !isSubscribed && !isPremium) {
+      router.replace('/(onboarding)/paywall');
+    }
+  }, [rcLoading, isSubscribed, isPremium, onboardingCompleted]);
+
   return (
     <Tabs
       screenOptions={{

@@ -22,12 +22,8 @@ import { PurchasesPackage } from 'react-native-purchases';
 import { Colors } from '@/constants/colors';
 import { useUserStore } from '@/store/userStore';
 import { ShimmerCTA } from '@/components/ui';
-import {
-  getPackages,
-  purchasePackage,
-  restorePurchases,
-  formatPrice,
-} from '@/lib/revenuecat';
+import { useRevenueCat } from '@/providers/RevenueCatProvider';
+import { formatPrice } from '@/lib/revenuecat';
 
 // Check if running in Expo Go (for dev bypass)
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -99,38 +95,31 @@ export default function PaywallScreen() {
   const [selectedPlan, setSelectedPlan] = useState('lifetime');
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<PlanOption[]>(defaultPlans);
-  const [packagesLoaded, setPackagesLoaded] = useState(false);
   const { setPremium } = useUserStore();
+  const {
+    packages,
+    isLoading: rcLoading,
+    purchasePackage,
+    restorePurchases,
+  } = useRevenueCat();
 
-  // Load RevenueCat packages on mount
+  // Update plans when packages load from RevenueCat
   useEffect(() => {
-    loadPackages();
-  }, []);
-
-  const loadPackages = async () => {
-    try {
-      const packages = await getPackages();
-      if (packages.length > 0) {
-        // Update plans with real prices from RevenueCat
-        const updatedPlans = defaultPlans.map((plan) => {
-          const pkg = packages.find((p) => p.identifier === plan.rcIdentifier);
-          if (pkg) {
-            return {
-              ...plan,
-              price: formatPrice(pkg),
-              package: pkg,
-            };
-          }
-          return plan;
-        });
-        setPlans(updatedPlans);
-      }
-      setPackagesLoaded(true);
-    } catch (error) {
-      console.error('Failed to load packages:', error);
-      setPackagesLoaded(true);
+    if (packages.length > 0) {
+      const updatedPlans = defaultPlans.map((plan) => {
+        const pkg = packages.find((p: PurchasesPackage) => p.identifier === plan.rcIdentifier);
+        if (pkg) {
+          return {
+            ...plan,
+            price: formatPrice(pkg),
+            package: pkg,
+          };
+        }
+        return plan;
+      });
+      setPlans(updatedPlans);
     }
-  };
+  }, [packages]);
 
   // Animation values
   const headerOpacity = useSharedValue(0);
@@ -271,7 +260,7 @@ export default function PaywallScreen() {
     } else if (result.success && !result.isPremium) {
       Alert.alert('No Purchases Found', 'We couldn\'t find any previous purchases for this account.');
     } else {
-      Alert.alert('Restore Failed', result.error || 'Something went wrong. Please try again.');
+      Alert.alert('Restore Failed', 'Something went wrong. Please try again.');
     }
   };
 
