@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Haptics from 'expo-haptics';
 import {
   useFonts,
   Inter_400Regular,
@@ -47,6 +48,19 @@ export default function RootLayout() {
   // Initialize auth on app start
   useEffect(() => {
     initialize();
+
+    // Debug: Check if haptics module is available
+    console.log('[Haptics Debug] Module check:', {
+      impactAsync: typeof Haptics.impactAsync,
+      notificationAsync: typeof Haptics.notificationAsync,
+      selectionAsync: typeof Haptics.selectionAsync,
+      ImpactFeedbackStyle: Haptics.ImpactFeedbackStyle,
+    });
+
+    // Try triggering haptics on startup to test
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+      .then(() => console.log('[Haptics Debug] Startup test: SUCCESS'))
+      .catch((err) => console.error('[Haptics Debug] Startup test FAILED:', err));
   }, []);
 
   useEffect(() => {

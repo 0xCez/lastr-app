@@ -21,13 +21,13 @@ interface AnimatedSplashProps {
   size?: 'small' | 'medium' | 'large';
 }
 
-// Purple teardrop/drop SVG component - styled like an apostrophe
+// White teardrop/drop SVG component - styled like an apostrophe
 const DropIcon: React.FC<{ size: number }> = ({ size }) => (
   <View style={{ transform: [{ rotate: '-135deg' }] }}>
     <Svg width={size * 0.22} height={size * 0.28} viewBox="0 0 24 30">
       <Path
         d="M12 0C12 0 2 12 2 19C2 24.5 6.5 29 12 29C17.5 29 22 24.5 22 19C22 12 12 0 12 0Z"
-        fill="#8B5CF6"
+        fill="#FFFFFF"
       />
     </Svg>
   </View>
@@ -64,7 +64,7 @@ export const AnimatedSplash: React.FC<AnimatedSplashProps> = ({
     useSharedValue(10), // drop starts higher
   ];
 
-  const sizeMultiplier = size === 'small' ? 0.5 : size === 'medium' ? 0.7 : 1;
+  const sizeMultiplier = size === 'small' ? 0.5 : size === 'large' ? 1.5 : 1;
   const scaledHeight = LOGO_HEIGHT * sizeMultiplier;
   const fontSize = 52 * sizeMultiplier;
 
@@ -228,7 +228,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A0A0F',
   },
   loaderContainer: {
     alignItems: 'center',
@@ -250,8 +249,8 @@ const styles = StyleSheet.create({
     letterSpacing: -1.5,
   },
   dropContainer: {
-    marginLeft: -2,
-    marginTop: -8,
+    marginLeft: 2,
+    marginTop: 15,
     alignSelf: 'flex-start',
   },
   loadingContainer: {

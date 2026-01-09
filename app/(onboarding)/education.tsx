@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, FlatList, ViewToken, Image } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, FlatList, ViewToken } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -83,9 +83,9 @@ const slideData = [
   {
     id: 6,
     badge: 'YOUR JOURNEY',
-    title: 'Welcome to',
+    title: 'Your transformation\nstarts now',
     showLogo: true,
-    description: 'A proven method based on clinical research. Your transformation starts now.',
+    description: 'A proven method based on clinical research. Join millions of men.',
     stat: '2.3M+',
     statLabel: 'men helped',
     icon: 'rocket-outline' as const,
@@ -106,8 +106,6 @@ const SlideContent = ({
   isActive: boolean;
   scrollX: SharedValue<number>;
 }) => {
-  const isPositive = index === 4; // Only slide 5 (THE SOLUTION) is green
-
   // Icon/badge animations (dramatic)
   const badgeOpacity = useSharedValue(0);
   const badgeScale = useSharedValue(0.5);
@@ -124,7 +122,6 @@ const SlideContent = ({
   const statOpacity = useSharedValue(0);
   const titleOpacity = useSharedValue(0);
   const descOpacity = useSharedValue(0);
-  const logoOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (isActive) {
@@ -141,7 +138,6 @@ const SlideContent = ({
       statOpacity.value = 0;
       titleOpacity.value = 0;
       descOpacity.value = 0;
-      logoOpacity.value = 0;
 
       // Badge drops in from top with bounce
       badgeOpacity.value = withDelay(100, withTiming(1, { duration: 300 }));
@@ -187,7 +183,6 @@ const SlideContent = ({
       glowOpacity.value = withTiming(0.5, { duration: 400, easing: Easing.out(Easing.ease) });
       statOpacity.value = withDelay(50, withTiming(1, { duration: 350, easing: Easing.out(Easing.ease) }));
       titleOpacity.value = withDelay(100, withTiming(1, { duration: 350, easing: Easing.out(Easing.ease) }));
-      logoOpacity.value = withDelay(120, withTiming(1, { duration: 350, easing: Easing.out(Easing.ease) }));
       descOpacity.value = withDelay(150, withTiming(1, { duration: 350, easing: Easing.out(Easing.ease) }));
     }
   }, [isActive]);
@@ -268,10 +263,6 @@ const SlideContent = ({
     opacity: descOpacity.value,
   }));
 
-  const logoStyle = useAnimatedStyle(() => ({
-    opacity: logoOpacity.value,
-  }));
-
   return (
     <View style={styles.slide}>
       <LinearGradient
@@ -292,14 +283,16 @@ const SlideContent = ({
       </Animated.View>
 
       <View style={styles.slideInner}>
-        {/* Header with Logo */}
-        <View style={styles.header}>
-          <Image
-            source={require('@/assets/images/logo_nobg.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        </View>
+        {/* Welcome header for last slide - positioned absolutely */}
+        {'showLogo' in item && item.showLogo && (
+          <Animated.View style={[styles.welcomeHeader, titleStyle]}>
+            <Animated.Image
+              source={require('@/assets/images/logo_nobg.png')}
+              style={styles.heroLogo}
+              resizeMode="contain"
+            />
+          </Animated.View>
+        )}
 
         {/* Main Content - Centered with parallax */}
         <Animated.View style={[styles.mainContent, parallaxStyle]}>
@@ -327,20 +320,11 @@ const SlideContent = ({
           {/* Title - smooth fade in */}
           <Animated.Text style={[
             styles.title,
-            isPositive && { color: '#22C55E' },
+            { color: item.accentColor },
             titleStyle,
           ]}>
             {item.title}
           </Animated.Text>
-
-          {/* Logo for last slide - smooth fade in */}
-          {'showLogo' in item && item.showLogo && (
-            <Animated.Image
-              source={require('@/assets/images/logo_nobg.png')}
-              style={[styles.heroLogo, logoStyle]}
-              resizeMode="contain"
-            />
-          )}
 
           {/* Description - smooth fade in */}
           <Animated.Text style={[styles.description, descStyle]}>{item.description}</Animated.Text>
@@ -498,20 +482,24 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 28,
   },
-  header: {
-    alignItems: 'center',
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  logoImage: {
-    width: 100,
-    height: 36,
-  },
   mainContent: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingBottom: 20,
+  },
+  welcomeHeader: {
+    alignItems: 'center',
+    position: 'absolute',
+    top: 110,
+    left: 0,
+    right: 0,
+  },
+  welcomeText: {
+    fontSize: 28,
+    fontFamily: 'Inter_500Medium',
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 8,
   },
   badge: {
     flexDirection: 'row',

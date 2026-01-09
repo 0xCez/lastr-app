@@ -68,6 +68,8 @@ export default function DashboardScreen() {
     getScoreImprovement,
     progressHistory,
     startDate,
+    lastCheckInDate,
+    checkInDueDate,
   } = useUserStore();
 
   // Check-in modal state
@@ -90,6 +92,23 @@ export default function DashboardScreen() {
 
   // Check if check-in is due
   const checkInIsDue = isCheckInDue();
+
+  // Calculate days until next check-in
+  const getDaysUntilCheckIn = () => {
+    if (!checkInDueDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(checkInDueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const daysUntilCheckIn = getDaysUntilCheckIn();
+  const daysSinceLastCheckIn = lastCheckInDate
+    ? Math.floor((Date.now() - new Date(lastCheckInDate).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
 
   // Get improvement stats
   const improvement = getScoreImprovement();
@@ -419,6 +438,48 @@ export default function DashboardScreen() {
               <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
             </Pressable>
           </Animated.View>
+
+          {/* Check-in Countdown Widget (shown when NOT due) */}
+          {!checkInIsDue && daysUntilCheckIn !== null && daysUntilCheckIn > 0 && (
+            <Animated.View style={[styles.checkInCountdown, todayCardStyle]}>
+              <View style={styles.countdownLeft}>
+                <View style={[
+                  styles.countdownIconWrap,
+                  daysUntilCheckIn <= 2 && styles.countdownIconWrapSoon,
+                ]}>
+                  <Ionicons
+                    name="time-outline"
+                    size={18}
+                    color={daysUntilCheckIn <= 2 ? '#F59E0B' : Colors.primary}
+                  />
+                </View>
+                <View style={styles.countdownContent}>
+                  <Text style={styles.countdownTitle}>Next Check-in</Text>
+                  <Text style={styles.countdownSubtitle}>
+                    {daysUntilCheckIn === 1
+                      ? 'Tomorrow'
+                      : `In ${daysUntilCheckIn} days`}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.countdownProgress}>
+                <View style={styles.countdownDots}>
+                  {[...Array(7)].map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.countdownDot,
+                        i < (7 - daysUntilCheckIn) && styles.countdownDotFilled,
+                      ]}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.countdownDays}>
+                  Day {7 - daysUntilCheckIn}/7
+                </Text>
+              </View>
+            </Animated.View>
+          )}
 
           {/* Check-in Prompt (shown when due) */}
           {checkInIsDue && !checkInPromptDismissed && (
@@ -1034,5 +1095,68 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     marginTop: 12,
+  },
+  // Check-in countdown styles
+  checkInCountdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(139, 92, 246, 0.06)',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.12)',
+    marginBottom: 16,
+  },
+  countdownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  countdownIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countdownIconWrapSoon: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+  },
+  countdownContent: {
+    gap: 2,
+  },
+  countdownTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: Colors.text,
+  },
+  countdownSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: Colors.textSecondary,
+  },
+  countdownProgress: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  countdownDots: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  countdownDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  countdownDotFilled: {
+    backgroundColor: Colors.primary,
+  },
+  countdownDays: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    color: Colors.textMuted,
   },
 });

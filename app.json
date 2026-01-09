@@ -2,21 +2,20 @@
   "expo": {
     "name": "Lastr'",
     "slug": "lastr-app",
-    "version": "1.0.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo_nobg.png",
     "scheme": "lastr",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/logo_nobg.png",
-      "resizeMode": "contain",
       "backgroundColor": "#0A0A0F"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.theawesomeco.lastr",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -35,13 +34,10 @@
       "expo-font",
       "expo-secure-store",
       "expo-apple-authentication",
-      "react-native-purchases",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0A0A0F",
-          "image": "./assets/images/logo_nobg.png",
-          "imageWidth": 200
+          "backgroundColor": "#0A0A0F"
         }
       ]
     ],

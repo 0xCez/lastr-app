@@ -1,115 +1,116 @@
 import { TextStyle } from 'react-native';
+import { fp } from './responsive';
 
 export const Typography = {
   // Headings
   h1: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 32,
+    fontSize: fp(32),
     fontWeight: '700',
-    lineHeight: 40,
+    lineHeight: fp(40),
     letterSpacing: -0.5,
   } as TextStyle,
 
   h2: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 24,
+    fontSize: fp(24),
     fontWeight: '700',
-    lineHeight: 32,
+    lineHeight: fp(32),
     letterSpacing: -0.3,
   } as TextStyle,
 
   h3: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 20,
+    fontSize: fp(20),
     fontWeight: '600',
-    lineHeight: 28,
+    lineHeight: fp(28),
   } as TextStyle,
 
   h4: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 18,
+    fontSize: fp(18),
     fontWeight: '600',
-    lineHeight: 24,
+    lineHeight: fp(24),
   } as TextStyle,
 
   // Body
   bodyLarge: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 18,
+    fontSize: fp(18),
     fontWeight: '400',
-    lineHeight: 28,
+    lineHeight: fp(28),
   } as TextStyle,
 
   body: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 16,
+    fontSize: fp(16),
     fontWeight: '400',
-    lineHeight: 24,
+    lineHeight: fp(24),
   } as TextStyle,
 
   bodySmall: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 14,
+    fontSize: fp(14),
     fontWeight: '400',
-    lineHeight: 20,
+    lineHeight: fp(20),
   } as TextStyle,
 
   // Labels
   label: {
     fontFamily: 'Inter_500Medium',
-    fontSize: 14,
+    fontSize: fp(14),
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: fp(20),
   } as TextStyle,
 
   labelSmall: {
     fontFamily: 'Inter_500Medium',
-    fontSize: 12,
+    fontSize: fp(12),
     fontWeight: '500',
-    lineHeight: 16,
+    lineHeight: fp(16),
   } as TextStyle,
 
   // Special
   stat: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 48,
+    fontSize: fp(48),
     fontWeight: '700',
-    lineHeight: 56,
+    lineHeight: fp(56),
   } as TextStyle,
 
   statMedium: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 36,
+    fontSize: fp(36),
     fontWeight: '700',
-    lineHeight: 44,
+    lineHeight: fp(44),
   } as TextStyle,
 
   statSmall: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 24,
+    fontSize: fp(24),
     fontWeight: '700',
-    lineHeight: 32,
+    lineHeight: fp(32),
   } as TextStyle,
 
   button: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 16,
+    fontSize: fp(16),
     fontWeight: '600',
-    lineHeight: 24,
+    lineHeight: fp(24),
   } as TextStyle,
 
   buttonSmall: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
+    fontSize: fp(14),
     fontWeight: '600',
-    lineHeight: 20,
+    lineHeight: fp(20),
   } as TextStyle,
 
   caption: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 12,
+    fontSize: fp(12),
     fontWeight: '400',
-    lineHeight: 16,
+    lineHeight: fp(16),
   } as TextStyle,
 };
 

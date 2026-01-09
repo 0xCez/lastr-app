@@ -172,7 +172,7 @@ export const goals: Goal[] = [
   {
     id: 'relationship',
     title: 'Improve relationship',
-    description: 'Better intimacy with partner',
+    description: 'Better intimacy',
     emoji: '❤️',
   },
   {

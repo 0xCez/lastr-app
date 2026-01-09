@@ -15,6 +15,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
+import { wp, fp, hp } from '@/constants/responsive';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -59,7 +60,7 @@ export const ShimmerCTA: React.FC<ShimmerCTAProps> = ({
       // Pulse animation
       scale.value = withRepeat(
         withSequence(
-          withTiming(1.02, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.022, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
           withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) })
         ),
         -1,
@@ -188,7 +189,7 @@ export const ShimmerCTA: React.FC<ShimmerCTAProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
+    borderRadius: wp(16),
     overflow: 'hidden',
   },
   containerDisabled: {
@@ -197,16 +198,16 @@ const styles = StyleSheet.create({
   gradient: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    borderRadius: 16,
+    paddingVertical: hp(18),
+    paddingHorizontal: wp(32),
+    borderRadius: wp(16),
     overflow: 'hidden',
   },
   shimmer: {
     position: 'absolute',
     top: 0,
     bottom: 0,
-    width: 80,
+    width: wp(80),
     left: 0,
   },
   shimmerGradient: {
@@ -222,10 +223,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   icon: {
-    marginRight: 10,
+    marginRight: wp(10),
   },
   title: {
-    fontSize: 17,
+    fontSize: fp(17),
     fontFamily: 'Inter_600SemiBold',
     color: '#FFFFFF',
     letterSpacing: 0.3,
@@ -234,9 +235,9 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: fp(13),
     fontFamily: 'Inter_400Regular',
     color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 4,
+    marginTop: hp(4),
   },
 });

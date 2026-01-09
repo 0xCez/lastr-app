@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -11,9 +11,11 @@ import Animated, {
   withDelay,
   withRepeat,
   withSequence,
+  withSpring,
   Easing,
   FadeInDown,
   FadeInUp,
+  runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Colors } from '@/constants/colors';
@@ -34,8 +36,76 @@ const getTaskMeta = (type: string) => {
   }
 };
 
+// Animated checkbox component for micro-celebrations
+const AnimatedCheckbox = ({
+  completed,
+  onToggle,
+  borderColor
+}: {
+  completed: boolean;
+  onToggle: () => void;
+  borderColor: string;
+}) => {
+  const scale = useSharedValue(1);
+  const checkScale = useSharedValue(completed ? 1 : 0);
+
+  useEffect(() => {
+    checkScale.value = withSpring(completed ? 1 : 0, { damping: 12, stiffness: 200 });
+  }, [completed]);
+
+  const handlePress = async () => {
+    // Animate the checkbox
+    scale.value = withSequence(
+      withSpring(0.85, { damping: 10, stiffness: 400 }),
+      withSpring(1.15, { damping: 8, stiffness: 300 }),
+      withSpring(1, { damping: 10, stiffness: 400 })
+    );
+    onToggle();
+  };
+
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const checkStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: checkScale.value }],
+    opacity: checkScale.value,
+  }));
+
+  return (
+    <Pressable onPress={handlePress} style={styles.checkboxWrap} hitSlop={12}>
+      <Animated.View style={[
+        styles.checkbox,
+        completed && styles.checkboxChecked,
+        !completed && { borderColor },
+        containerStyle,
+      ]}>
+        {completed ? (
+          <LinearGradient
+            colors={['#22C55E', '#16A34A']}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        <Animated.View style={checkStyle}>
+          {completed && (
+            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+          )}
+        </Animated.View>
+      </Animated.View>
+    </Pressable>
+  );
+};
+
 export default function TodayScreen() {
   const { dailyTasks, toggleDailyTask, currentStreak, initializeDailyTasks } = useUserStore();
+
+  // Toast state for micro-celebrations
+  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+  const toastOpacity = useSharedValue(0);
+  const toastY = useSharedValue(-20);
+
+  // Track previous completed count to detect completion
+  const [prevCompletedCount, setPrevCompletedCount] = useState(0);
 
   useEffect(() => {
     initializeDailyTasks();
@@ -45,6 +115,25 @@ export default function TodayScreen() {
   const totalCount = dailyTasks.length;
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
   const allCompleted = completedCount === totalCount && totalCount > 0;
+
+  // Show toast helper
+  const showToast = useCallback((message: string) => {
+    setToast({ message, visible: true });
+    toastOpacity.value = withTiming(1, { duration: 200 });
+    toastY.value = withSpring(0, { damping: 15 });
+
+    // Hide after 2 seconds
+    setTimeout(() => {
+      toastOpacity.value = withTiming(0, { duration: 300 });
+      toastY.value = withTiming(-20, { duration: 300 });
+      setTimeout(() => setToast({ message: '', visible: false }), 300);
+    }, 2000);
+  }, []);
+
+  const toastStyle = useAnimatedStyle(() => ({
+    opacity: toastOpacity.value,
+    transform: [{ translateY: toastY.value }],
+  }));
 
   // Get the first uncompleted task for "Start Training" button
   const nextTask = dailyTasks.find(t => !t.completed);
@@ -108,8 +197,37 @@ export default function TodayScreen() {
   }));
 
   const handleToggleTask = async (taskId: string) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const task = dailyTasks.find(t => t.id === taskId);
+    const wasCompleted = task?.completed;
+
+    // Toggle the task
     toggleDailyTask(taskId);
+
+    // If we're completing (not uncompleting)
+    if (!wasCompleted) {
+      // Strong haptic for completion
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Calculate new completed count after this toggle
+      const newCompletedCount = completedCount + 1;
+      const remaining = totalCount - newCompletedCount;
+
+      // Show appropriate celebration message
+      if (remaining === 0) {
+        // All tasks complete - big celebration
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast('All tasks complete! Amazing!');
+      } else if (remaining === 1) {
+        showToast('Almost there! 1 left!');
+      } else if (newCompletedCount === 1) {
+        showToast('Great start! Keep going!');
+      } else {
+        showToast(`Nice! ${remaining} more to go`);
+      }
+    } else {
+      // Light haptic for uncompleting
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   };
 
   const handleTaskPress = async (taskId: string) => {
@@ -140,6 +258,20 @@ export default function TodayScreen() {
       </Animated.View>
 
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Celebration Toast */}
+        {toast.visible && (
+          <Animated.View style={[styles.toast, toastStyle]}>
+            <LinearGradient
+              colors={['rgba(34, 197, 94, 0.95)', 'rgba(22, 163, 74, 0.95)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+            <Text style={styles.toastText}>{toast.message}</Text>
+          </Animated.View>
+        )}
+
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -297,28 +429,12 @@ export default function TodayScreen() {
                     {/* Left accent line */}
                     <View style={[styles.taskAccent, { backgroundColor: task.completed ? '#22C55E' : meta.color }]} />
 
-                    {/* Checkbox */}
-                    <Pressable
-                      onPress={() => handleToggleTask(task.id)}
-                      style={styles.checkboxWrap}
-                      hitSlop={12}
-                    >
-                      <View style={[
-                        styles.checkbox,
-                        task.completed && styles.checkboxChecked,
-                        !task.completed && { borderColor: `${meta.color}60` },
-                      ]}>
-                        {task.completed ? (
-                          <LinearGradient
-                            colors={['#22C55E', '#16A34A']}
-                            style={StyleSheet.absoluteFill}
-                          />
-                        ) : null}
-                        {task.completed && (
-                          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-                        )}
-                      </View>
-                    </Pressable>
+                    {/* Animated Checkbox */}
+                    <AnimatedCheckbox
+                      completed={task.completed}
+                      onToggle={() => handleToggleTask(task.id)}
+                      borderColor={`${meta.color}60`}
+                    />
 
                     {/* Task Content */}
                     <View style={styles.taskContent}>
@@ -722,5 +838,31 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+  // Toast styles for micro-celebrations
+  toast: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    zIndex: 1000,
+    overflow: 'hidden',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  toastText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#FFFFFF',
   },
 });

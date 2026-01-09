@@ -239,6 +239,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 8,
     textAlign: 'center',
+    paddingHorizontal: 16,
   },
   scrollView: {
     flex: 1,
@@ -331,6 +332,6 @@ const styles = StyleSheet.create({
   footerInner: {
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 16,
+    paddingBottom: 32,
   },
 });
