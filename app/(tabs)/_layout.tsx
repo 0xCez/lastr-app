@@ -19,6 +19,16 @@ export default function TabsLayout() {
     }
   }, [isSubscribed, rcLoading, isPremium, setPremium]);
 
+  // Demo: if a visitor lands on /(tabs) without having completed onboarding
+  // (e.g. via a cached URL or stale localStorage), bounce them back to the
+  // start of the onboarding flow. Mobile-equivalent UX requires going through
+  // onboarding before reaching the dashboard.
+  useEffect(() => {
+    if (DEMO_MODE && !onboardingCompleted) {
+      router.replace('/(onboarding)');
+    }
+  }, [onboardingCompleted]);
+
   // Gate access: redirect to paywall if not subscribed.
   // In DEMO_MODE the user is always treated as subscribed, so the gate is a no-op.
   useEffect(() => {

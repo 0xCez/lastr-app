@@ -16,9 +16,11 @@ import {
   DMSans_500Medium,
   DMSans_700Bold,
 } from '@expo-google-fonts/dm-sans';
+import { Platform } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { useAuthStore } from '@/store/authStore';
 import { RevenueCatProvider } from '@/providers/RevenueCatProvider';
+import { DEMO_MODE } from '@/lib/demo';
 
 // Prevent auto hide
 SplashScreen.preventAutoHideAsync();
@@ -47,20 +49,21 @@ export default function RootLayout() {
 
   // Initialize auth on app start
   useEffect(() => {
+    // Demo: clear any persisted store state from a previous visit so every
+    // page load restarts at the welcome screen with a clean slate.
+    if (DEMO_MODE && Platform.OS === 'web' && typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem('user-storage');
+        window.localStorage.removeItem('onboarding-storage');
+      } catch {}
+    }
+
     initialize();
 
-    // Debug: Check if haptics module is available
-    console.log('[Haptics Debug] Module check:', {
-      impactAsync: typeof Haptics.impactAsync,
-      notificationAsync: typeof Haptics.notificationAsync,
-      selectionAsync: typeof Haptics.selectionAsync,
-      ImpactFeedbackStyle: Haptics.ImpactFeedbackStyle,
-    });
-
-    // Try triggering haptics on startup to test
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-      .then(() => console.log('[Haptics Debug] Startup test: SUCCESS'))
-      .catch((err) => console.error('[Haptics Debug] Startup test FAILED:', err));
+    // Haptics aren't available on web; skip the startup test there.
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
