@@ -25,6 +25,8 @@ import { ShimmerCTA } from '@/components/ui';
 import { useRevenueCat } from '@/providers/RevenueCatProvider';
 import { formatPrice } from '@/lib/revenuecat';
 import { wp, hp, fp } from '@/constants/responsive';
+import { DEMO_MODE } from '@/lib/demo';
+import { useOnboardingStore } from '@/store/onboardingStore';
 
 // Check if running in Expo Go (for dev bypass)
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -101,7 +103,27 @@ export default function PaywallScreen() {
   const [recoveryPlan, setRecoveryPlan] = useState<PlanOption>(defaultRecoveryPlan);
   const [showRecoveryPaywall, setShowRecoveryPaywall] = useState(false);
   const hasAttemptedPurchase = useRef(false);
-  const { setPremium } = useUserStore();
+  const { setPremium, initializeFromOnboarding } = useUserStore();
+  const { analysisScore, answers, targetDate } = useOnboardingStore();
+
+  // Demo: skip the real purchase flow entirely. Seed the dashboard with
+  // the visitor's onboarding output, override to the polished demo baseline,
+  // then route straight to /(tabs).
+  const completeDemoPurchase = () => {
+    initializeFromOnboarding(
+      analysisScore || 45,
+      answers.primary_concern || 'both',
+      targetDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    );
+    useUserStore.setState({
+      controlScore: 72,
+      initialScore: 45,
+      currentStreak: 7,
+      longestStreak: 12,
+      isPremium: true,
+    });
+    router.replace('/(tabs)');
+  };
   const {
     packages,
     isLoading: rcLoading,
@@ -225,6 +247,11 @@ export default function PaywallScreen() {
   };
 
   const handlePurchase = async () => {
+    if (DEMO_MODE) {
+      completeDemoPurchase();
+      return;
+    }
+
     const plan = plans.find((p) => p.id === selectedPlan);
 
     // Dev bypass for Expo Go
@@ -289,6 +316,12 @@ export default function PaywallScreen() {
   };
 
   const handleRecoveryPurchase = async () => {
+    if (DEMO_MODE) {
+      setShowRecoveryPaywall(false);
+      completeDemoPurchase();
+      return;
+    }
+
     // Dev bypass for Expo Go
     if (__DEV__ && isExpoGo && !recoveryPlan?.package) {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
