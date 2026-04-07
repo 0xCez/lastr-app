@@ -1,6 +1,14 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEMO_MODE } from '@/lib/demo';
+
+// Demo: in-memory only so reloads always restart onboarding fresh.
+const noopStorage: StateStorage = {
+  getItem: async () => null,
+  setItem: async () => undefined,
+  removeItem: async () => undefined,
+};
 
 interface OnboardingAnswers {
   age?: string;
@@ -123,7 +131,7 @@ export const useOnboardingStore = create<OnboardingState>()(
     }),
     {
       name: 'onboarding-storage',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => (DEMO_MODE ? noopStorage : AsyncStorage)),
     }
   )
 );

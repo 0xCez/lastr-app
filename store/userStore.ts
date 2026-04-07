@@ -1,6 +1,17 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEMO_MODE } from '@/lib/demo';
+
+// Demo: use a no-op in-memory storage so every page reload starts the user
+// at a clean slate (re-runs onboarding from screen 1). Chosen over wiping
+// AsyncStorage on launch because it avoids a hydration race — the store
+// simply never persists in the first place.
+const noopStorage: StateStorage = {
+  getItem: async () => null,
+  setItem: async () => undefined,
+  removeItem: async () => undefined,
+};
 
 interface DailyTask {
   id: string;
@@ -384,7 +395,7 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: 'user-storage',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => (DEMO_MODE ? noopStorage : AsyncStorage)),
     }
   )
 );
