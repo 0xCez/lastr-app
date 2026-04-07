@@ -277,9 +277,16 @@ const Gauge: React.FC<GaugeProps> = ({ value, min, max, minLabel, maxLabel, onCh
         style={styles.segmentedContainer}
         onLayout={(e) => {
           containerWidth.current = e.nativeEvent.layout.width;
-          e.target.measure((x, y, width, height, pageX, pageY) => {
-            containerX.current = pageX;
-          });
+          // react-native-web's LayoutEvent target is a DOM node and has no
+          // .measure(); fall back to getBoundingClientRect on web.
+          const target: any = e.target;
+          if (target && typeof target.measure === 'function') {
+            target.measure((_x: number, _y: number, _w: number, _h: number, pageX: number) => {
+              containerX.current = pageX;
+            });
+          } else if (target && typeof target.getBoundingClientRect === 'function') {
+            containerX.current = target.getBoundingClientRect().left;
+          }
         }}
         {...panResponder.panHandlers}
       >
