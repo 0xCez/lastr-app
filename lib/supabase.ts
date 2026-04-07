@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { getItem, setItem, deleteItem } from '@/lib/secure-store';
 import { Database } from '@/types/database';
 import { DEMO_MODE } from '@/lib/demo';
 import { mockAuthUser, mockSession, mockTables } from '@/lib/mock-data';
@@ -15,28 +14,12 @@ if (!DEMO_MODE && __DEV__ && (!supabaseUrl || !supabaseAnonKey)) {
   );
 }
 
-// Custom storage adapter for Expo SecureStore
+// Custom storage adapter routed through the secure-store shim so it works
+// on native (expo-secure-store) and on web/Snack (AsyncStorage fallback).
 const ExpoSecureStoreAdapter = {
-  getItem: async (key: string) => {
-    if (Platform.OS === 'web') {
-      return localStorage.getItem(key);
-    }
-    return SecureStore.getItemAsync(key);
-  },
-  setItem: async (key: string, value: string) => {
-    if (Platform.OS === 'web') {
-      localStorage.setItem(key, value);
-      return;
-    }
-    await SecureStore.setItemAsync(key, value);
-  },
-  removeItem: async (key: string) => {
-    if (Platform.OS === 'web') {
-      localStorage.removeItem(key);
-      return;
-    }
-    await SecureStore.deleteItemAsync(key);
-  },
+  getItem: (key: string) => getItem(key),
+  setItem: (key: string, value: string) => setItem(key, value).then(() => undefined),
+  removeItem: (key: string) => deleteItem(key).then(() => undefined),
 };
 
 // ---------------------------------------------------------------------------
