@@ -2,7 +2,7 @@ import Purchases, {
   PurchasesPackage,
   CustomerInfo,
   PurchasesOffering,
-} from 'react-native-purchases';
+} from '@/lib/purchases-stub';
 import { Platform } from 'react-native';
 
 const API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '';

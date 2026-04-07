@@ -3,7 +3,7 @@ import Purchases, {
   CustomerInfo,
   PurchasesPackage,
   PurchasesOffering,
-} from 'react-native-purchases';
+} from '@/lib/purchases-stub';
 import { Platform } from 'react-native';
 import { useAuthStore } from '@/store/authStore';
 

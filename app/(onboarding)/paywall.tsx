@@ -18,7 +18,7 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { PurchasesPackage } from 'react-native-purchases';
+import { PurchasesPackage } from '@/lib/purchases-stub';
 import { Colors } from '@/constants/colors';
 import { useUserStore } from '@/store/userStore';
 import { ShimmerCTA } from '@/components/ui';
