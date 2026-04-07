@@ -4,6 +4,20 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Haptics from 'expo-haptics';
+import { Platform as RNPlatform } from 'react-native';
+
+// Web fallback: expo-haptics throws UnavailabilityError on web. Many
+// components call Haptics.* directly inside onPress handlers, so we patch
+// the module once at module load time to make every method a no-op on web.
+if (RNPlatform.OS === 'web') {
+  const noop = async () => {};
+  // @ts-expect-error — overriding native module exports
+  Haptics.impactAsync = noop;
+  // @ts-expect-error
+  Haptics.notificationAsync = noop;
+  // @ts-expect-error
+  Haptics.selectionAsync = noop;
+}
 import {
   useFonts,
   Inter_400Regular,
