@@ -47,3 +47,7 @@ coverage/
 
 expo-env.d.ts
 # @end expo-cli
+
+# Internal design briefs (not for public demo branch)
+BETAI_DESIGN_BRIEF.md
+LANDING_PAGE_BRIEF.md
