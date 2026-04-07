@@ -6,6 +6,7 @@ import { BlurView } from 'expo-blur';
 import { Colors } from '@/constants/colors';
 import { useRevenueCat } from '@/providers/RevenueCatProvider';
 import { useUserStore } from '@/store/userStore';
+import { DEMO_MODE } from '@/lib/demo';
 
 export default function TabsLayout() {
   const { isSubscribed, isLoading: rcLoading } = useRevenueCat();
@@ -18,8 +19,10 @@ export default function TabsLayout() {
     }
   }, [isSubscribed, rcLoading, isPremium, setPremium]);
 
-  // Gate access: redirect to paywall if not subscribed
+  // Gate access: redirect to paywall if not subscribed.
+  // In DEMO_MODE the user is always treated as subscribed, so the gate is a no-op.
   useEffect(() => {
+    if (DEMO_MODE) return;
     // Only check after RC loads and if user completed onboarding
     if (!rcLoading && onboardingCompleted && !isSubscribed && !isPremium) {
       router.replace('/(onboarding)/paywall');

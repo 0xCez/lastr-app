@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { signInWithApple, signOut as authSignOut } from '@/lib/auth';
+import { DEMO_MODE } from '@/lib/demo';
+import { mockAuthUser, mockSession } from '@/lib/mock-data';
 
 // Track if listener has been set up (prevents multiple listeners)
 let authListenerSetup = false;
@@ -29,6 +31,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialize: async () => {
     // Prevent re-initialization
     if (get().isInitialized) return;
+
+    // Demo: skip Supabase entirely and seed a fake signed-in session.
+    if (DEMO_MODE) {
+      set({
+        session: mockSession as unknown as Session,
+        user: mockAuthUser as unknown as User,
+        isInitialized: true,
+        isLoading: false,
+      });
+      return;
+    }
 
     try {
       set({ isLoading: true });
