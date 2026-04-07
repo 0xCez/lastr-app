@@ -8,8 +8,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "test": "jest",
-    "postinstall": "patch-package"
+    "test": "jest"
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",
