@@ -8,6 +8,7 @@ import { Colors } from '@/constants/colors';
 import { Typography } from '@/constants/typography';
 import { useUserStore } from '@/store/userStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
+import { DEMO_MODE } from '@/lib/demo';
 
 interface SettingItem {
   icon: string;
@@ -226,11 +227,13 @@ export default function ProfileScreen() {
           </View>
         ))}
 
-        {/* Sign Out Button */}
-        <TouchableOpacity onPress={handleLogout} style={styles.signOutButton}>
-          <Ionicons name="log-out-outline" size={22} color={Colors.error} />
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        {/* Sign Out Button — hidden in demo mode (no real account) */}
+        {!DEMO_MODE && (
+          <TouchableOpacity onPress={handleLogout} style={styles.signOutButton}>
+            <Ionicons name="log-out-outline" size={22} color={Colors.error} />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+        )}
 
         {/* App Version */}
         <Text style={styles.version}>Version 1.0.0</Text>

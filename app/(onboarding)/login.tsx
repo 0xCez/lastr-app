@@ -31,6 +31,7 @@ import { AppleSignInButton, ShimmerCTA } from '@/components/ui';
 import { useUserStore } from '@/store/userStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { supabase } from '@/lib/supabase';
+import { DEMO_MODE } from '@/lib/demo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -49,6 +50,27 @@ export default function LoginScreen() {
 
   const { initializeFromOnboarding } = useUserStore();
   const { analysisScore, answers, targetDate } = useOnboardingStore();
+
+  // Demo: skip the login screen entirely. Seed the user store with the
+  // analysis output (so the dashboard reflects the visitor's onboarding
+  // answers) and then nudge the displayed values toward the polished demo
+  // baseline (72% control, 7-day streak) before routing to /(tabs).
+  useEffect(() => {
+    if (!DEMO_MODE) return;
+    initializeFromOnboarding(
+      analysisScore || 45,
+      answers.primary_concern || 'both',
+      targetDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    );
+    useUserStore.setState({
+      controlScore: 72,
+      initialScore: 45,
+      currentStreak: 7,
+      longestStreak: 12,
+      isPremium: true,
+    });
+    router.replace('/(tabs)');
+  }, []);
 
   // Animations
   const headerOpacity = useSharedValue(0);
